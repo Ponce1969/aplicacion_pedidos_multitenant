@@ -21,7 +21,7 @@ async def dashboard(
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     hoy: date = datetime.now(UTC).date()
-    pedidos_mes = await pedido_service.get_pedidos_mes(db)
+    pedidos_mes = await pedido_service.get_pedidos_mes(db, current_user.empresa_id)
 
     total_ventas, cantidad_pedidos = pedido_service.calcular_kpis_mes(pedidos_mes)
     top_productos = pedido_service.calcular_top_productos(pedidos_mes)

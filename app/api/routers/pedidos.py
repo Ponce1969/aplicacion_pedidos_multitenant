@@ -44,12 +44,13 @@ async def nuevo_pedido_form(
 async def buscar_clientes(
     request: Request,
     q: str = "",
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     if len(q) < 2:
         return HTMLResponse("")
 
-    clientes = await cliente_repo.search(db, q)
+    clientes = await cliente_repo.search(db, q, current_user.empresa_id)
     return templates.TemplateResponse(
         request, "partials/clientes_resultado.html", {"clientes": clientes},
     )
@@ -62,12 +63,13 @@ async def buscar_clientes(
 async def buscar_productos(
     request: Request,
     q: str = "",
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     if len(q) < 2:
         return HTMLResponse("")
 
-    productos = await producto_repo.search(db, q)
+    productos = await producto_repo.search(db, q, current_user.empresa_id)
     return templates.TemplateResponse(
         request, "partials/productos_resultado.html", {"productos": productos},
     )
@@ -105,6 +107,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
 
     if items:
         nuevo_pedido = Pedido(
+            empresa_id=current_user.empresa_id,
             usuario_id=current_user.id,
             cliente_id=cid,
             nombre=nombre,
@@ -119,6 +122,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
     else:
         # Flujo legacy (sin items)
         nuevo_pedido = Pedido(
+            empresa_id=current_user.empresa_id,
             usuario_id=current_user.id,
             cliente_id=cid,
             nombre=nombre,
@@ -157,7 +161,7 @@ async def buscar_pedidos(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    pedidos = await pedido_service.buscar_pedidos(db, termino)
+    pedidos = await pedido_service.buscar_pedidos(db, termino, current_user.empresa_id)
 
     return templates.TemplateResponse(
         request, "partials/resultados_busqueda.html", {"pedidos": pedidos, "termino": termino},

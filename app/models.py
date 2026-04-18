@@ -1,16 +1,42 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+
+# ==================== TENANT (EMPRESA) ====================
+
+
+class Empresa(Base):
+    __tablename__ = "empresas"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    nombre: Mapped[str] = mapped_column(String(200), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    rubro: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    moneda: Mapped[str] = mapped_column(String(10), default="PYG", server_default="PYG")
+    zona_horaria: Mapped[str] = mapped_column(String(50), default="America/Asuncion", server_default="America/Asuncion")
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    usuarios: Mapped[list["Usuario"]] = relationship(back_populates="empresa", lazy="selectin")
+
+    __table_args__ = (Index("idx_empresa_slug", "slug"),)
+
+
+# ==================== MODELOS DE NEGOCIO ====================
 
 
 class Usuario(Base):
     __tablename__ = "usuarios"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    empresa_id: Mapped[int] = mapped_column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(100), nullable=False)
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -19,16 +45,20 @@ class Usuario(Base):
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     ultimo_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
-    __table_args__ = (Index("idx_usuario_email", "email"),)
+    # Relationship
+    empresa: Mapped["Empresa"] = relationship(back_populates="usuarios", lazy="selectin")
 
-
-# ==================== NUEVOS MODELOS v2 ====================
+    __table_args__ = (
+        UniqueConstraint("empresa_id", "email", name="uq_usuario_empresa_email"),
+        Index("idx_usuario_email", "email"),
+    )
 
 
 class Cliente(Base):
     __tablename__ = "clientes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    empresa_id: Mapped[int] = mapped_column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
     celular: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
@@ -42,14 +72,18 @@ class Cliente(Base):
         back_populates="cliente_rel", lazy="selectin",
     )
 
-    __table_args__ = (Index("idx_cliente_celular", "celular"),)
+    __table_args__ = (
+        UniqueConstraint("empresa_id", "celular", name="uq_cliente_empresa_celular"),
+        Index("idx_cliente_celular", "celular"),
+    )
 
 
 class Producto(Base):
     __tablename__ = "productos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    sku: Mapped[str | None] = mapped_column(String(50), unique=True, nullable=True)
+    empresa_id: Mapped[int] = mapped_column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+    sku: Mapped[str | None] = mapped_column(String(50), nullable=True)
     nombre: Mapped[str] = mapped_column(String(200), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
     precio_base: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
@@ -61,17 +95,21 @@ class Producto(Base):
     # Relationship: un producto aparece en muchas líneas de pedido
     items: Mapped[list["PedidoItem"]] = relationship(back_populates="producto", lazy="selectin")
 
-    __table_args__ = (Index("idx_producto_nombre", "nombre"),)
+    __table_args__ = (
+        UniqueConstraint("empresa_id", "sku", name="uq_producto_empresa_sku"),
+        Index("idx_producto_nombre", "nombre"),
+    )
 
 
 class Pedido(Base):
     __tablename__ = "pedidos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    empresa_id: Mapped[int] = mapped_column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
     usuario_id: Mapped[int] = mapped_column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     cliente_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("clientes.id"), nullable=True, index=True)
 
-    # Campos legacy (se mantienen para compatibilidad hasta Fase 5)
+    # Campos legacy (se mantienen para compatibilidad)
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
     celular: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -103,6 +141,7 @@ class Pedido(Base):
         Index("idx_fecha_creacion", "fecha_creacion"),
         Index("idx_usuario_pedidos", "usuario_id"),
         Index("idx_pedido_cliente", "cliente_id"),
+        Index("idx_pedido_empresa", "empresa_id"),
     )
 
 
@@ -131,11 +170,15 @@ class Configuracion(Base):
     __tablename__ = "configuracion"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    clave: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    empresa_id: Mapped[int] = mapped_column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+    clave: Mapped[str] = mapped_column(String(100), nullable=False)
     valor: Mapped[str] = mapped_column(String(500), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
-    __table_args__ = (Index("idx_config_clave", "clave"),)
+    __table_args__ = (
+        UniqueConstraint("empresa_id", "clave", name="uq_config_empresa_clave"),
+        Index("idx_config_clave", "clave"),
+    )
 
 
 class TokenBlacklist(Base):

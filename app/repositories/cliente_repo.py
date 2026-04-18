@@ -9,15 +9,18 @@ async def get_by_id(db: AsyncSession, cliente_id: int) -> Cliente | None:
     return result.scalar_one_or_none()
 
 
-async def get_by_celular(db: AsyncSession, celular: str) -> Cliente | None:
-    result = await db.execute(select(Cliente).where(Cliente.celular == celular))
+async def get_by_celular(db: AsyncSession, celular: str, empresa_id: int) -> Cliente | None:
+    result = await db.execute(
+        select(Cliente).where(Cliente.celular == celular, Cliente.empresa_id == empresa_id),
+    )
     return result.scalar_one_or_none()
 
 
-async def search(db: AsyncSession, termino: str) -> list[Cliente]:
+async def search(db: AsyncSession, termino: str, empresa_id: int) -> list[Cliente]:
     query = (
         select(Cliente)
         .where(
+            Cliente.empresa_id == empresa_id,
             (Cliente.celular.contains(termino))
             | (Cliente.apellido.ilike(f"%{termino}%"))
             | (Cliente.nombre.ilike(f"%{termino}%")),
@@ -37,7 +40,7 @@ async def create(db: AsyncSession, cliente: Cliente) -> Cliente:
 
 
 async def create_or_get_by_celular(db: AsyncSession, cliente: Cliente) -> Cliente:
-    existing = await get_by_celular(db, cliente.celular)
+    existing = await get_by_celular(db, cliente.celular, cliente.empresa_id)
     if existing is not None:
         return existing
     return await create(db, cliente)

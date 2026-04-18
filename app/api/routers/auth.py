@@ -29,9 +29,10 @@ async def registro(  # noqa: PLR0913 — too many args
     nombre: str = Form(...),
     apellido: str = Form(...),
     password: str = Form(...),
+    empresa_id: int = Form(1),
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    result = await auth_service.register_user(db, email, nombre, apellido, password)
+    result = await auth_service.register_user(db, email, nombre, apellido, password, empresa_id)
 
     if isinstance(result, str):
         return templates.TemplateResponse(

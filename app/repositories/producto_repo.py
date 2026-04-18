@@ -9,10 +9,11 @@ async def get_by_id(db: AsyncSession, producto_id: int) -> Producto | None:
     return result.scalar_one_or_none()
 
 
-async def search(db: AsyncSession, termino: str) -> list[Producto]:
+async def search(db: AsyncSession, termino: str, empresa_id: int) -> list[Producto]:
     query = (
         select(Producto)
         .where(
+            Producto.empresa_id == empresa_id,
             Producto.is_active == True,  # noqa: E712
             (Producto.nombre.ilike(f"%{termino}%"))
             | (Producto.sku.ilike(f"%{termino}%")),
@@ -24,10 +25,10 @@ async def search(db: AsyncSession, termino: str) -> list[Producto]:
     return list(result.scalars().all())
 
 
-async def list_active(db: AsyncSession) -> list[Producto]:
+async def list_active(db: AsyncSession, empresa_id: int) -> list[Producto]:
     query = (
         select(Producto)
-        .where(Producto.is_active == True)  # noqa: E712
+        .where(Producto.empresa_id == empresa_id, Producto.is_active == True)  # noqa: E712
         .order_by(Producto.nombre)
     )
     result = await db.execute(query)

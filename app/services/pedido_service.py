@@ -36,9 +36,9 @@ async def crear_pedido_con_items(
     return await pedido_repo.create(db, pedido)
 
 
-async def buscar_pedidos(db: AsyncSession, termino: str) -> list[Pedido]:
+async def buscar_pedidos(db: AsyncSession, termino: str, empresa_id: int) -> list[Pedido]:
     """Busca pedidos por celular o apellido."""
-    return await pedido_repo.search_by_celular_or_apellido(db, termino)
+    return await pedido_repo.search_by_celular_or_apellido(db, termino, empresa_id)
 
 
 async def get_pedido(db: AsyncSession, pedido_id: int) -> Pedido | None:
@@ -75,8 +75,8 @@ def calcular_kpis_mes(pedidos: list[Pedido]) -> tuple[float, int]:
     return total_ventas, cantidad
 
 
-async def get_pedidos_mes(db: AsyncSession) -> list[Pedido]:
+async def get_pedidos_mes(db: AsyncSession, empresa_id: int) -> list[Pedido]:
     """Obtiene los pedidos del mes actual."""
     hoy: date = datetime.now(UTC).date()
     primer_dia_mes: date = hoy.replace(day=1)
-    return await pedido_repo.get_by_month(db, primer_dia_mes)
+    return await pedido_repo.get_by_month(db, primer_dia_mes, empresa_id)

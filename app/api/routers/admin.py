@@ -18,7 +18,7 @@ async def listar_usuarios(
     current_user: Usuario = Depends(get_current_admin_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    usuarios = await usuario_repo.list_all(db)
+    usuarios = await usuario_repo.list_all(db, current_user.empresa_id)
 
     return templates.TemplateResponse(
         request, "admin/usuarios.html", {"user": current_user, "usuarios": usuarios},

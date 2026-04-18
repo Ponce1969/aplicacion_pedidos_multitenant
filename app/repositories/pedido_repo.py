@@ -18,20 +18,25 @@ async def create(db: AsyncSession, pedido: Pedido) -> Pedido:
     return pedido
 
 
-async def search_by_celular_or_apellido(db: AsyncSession, termino: str) -> list[Pedido]:
+async def search_by_celular_or_apellido(
+    db: AsyncSession, termino: str, empresa_id: int,
+) -> list[Pedido]:
     query = (
         select(Pedido)
-        .where((Pedido.celular.contains(termino)) | (Pedido.apellido.ilike(f"%{termino}%")))
+        .where(
+            Pedido.empresa_id == empresa_id,
+            (Pedido.celular.contains(termino)) | (Pedido.apellido.ilike(f"%{termino}%")),
+        )
         .order_by(Pedido.fecha_creacion.desc())
     )
     result = await db.execute(query)
     return list(result.scalars().all())
 
 
-async def get_by_month(db: AsyncSession, primer_dia_mes: date) -> list[Pedido]:
+async def get_by_month(db: AsyncSession, primer_dia_mes: date, empresa_id: int) -> list[Pedido]:
     query = (
         select(Pedido)
-        .where(Pedido.fecha_creacion >= primer_dia_mes)
+        .where(Pedido.empresa_id == empresa_id, Pedido.fecha_creacion >= primer_dia_mes)
         .order_by(Pedido.fecha_creacion.desc())
     )
     result = await db.execute(query)

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import (
@@ -11,15 +12,16 @@ from app.auth import (
     verify_password,
 )
 from app.config import settings
-from app.models import Usuario
+from app.models import Empresa, Usuario
 from app.repositories import usuario_repo
 
 
 async def register_user(
     db: AsyncSession, email: str, nombre: str, apellido: str, password: str,
+    empresa_id: int,
 ) -> Usuario | str:
     """Registra un usuario nuevo. Devuelve el usuario o un string de error."""
-    existing = await usuario_repo.get_by_email(db, email)
+    existing = await usuario_repo.get_by_email(db, email, empresa_id)
     if existing is not None:
         return "El email ya está registrado"
 
@@ -28,6 +30,7 @@ async def register_user(
         nombre=nombre,
         apellido=apellido,
         password_hash=get_password_hash(password),
+        empresa_id=empresa_id,
     )
     return await usuario_repo.create(db, nuevo)
 
@@ -36,7 +39,10 @@ async def authenticate_user(
     db: AsyncSession, email: str, password: str,
 ) -> Usuario | None:
     """Autentica un usuario. Devuelve el usuario o None si falla."""
-    user = await usuario_repo.get_by_email(db, email)
+    # Buscar por email sin empresa_id (login no sabe la empresa aún)
+    result = await db.execute(select(Usuario).where(Usuario.email == email))
+    user = result.scalar_one_or_none()
+
     if user is None or not user.is_active:
         return None
     if not verify_password(password, user.password_hash):

@@ -49,8 +49,46 @@ async def init_db() -> None:
     Se ejecuta en el lifespan de FastAPI al arrancar.
     Es idempotente: no recrea tablas que ya existen.
     Las migraciones con Alembic se ejecutan desde el entrypoint Docker.
+    También crea la empresa default y asigna usuarios existentes sin empresa.
     """
     async with engine.begin() as conn:
         from app.models import Base as ModelBase
 
         await conn.run_sync(ModelBase.metadata.create_all)
+
+    # Crear empresa default si no existe
+    from sqlalchemy import select, update
+
+    from app.models import Empresa, Usuario
+
+    async with async_session_factory() as session:
+        result = await session.execute(select(Empresa).where(Empresa.slug == "default"))
+        empresa = result.scalar_one_or_none()
+
+        if empresa is None:
+            empresa = Empresa(
+                nombre="Mi Empresa",
+                slug="default",
+                rubro="General",
+            )
+            session.add(empresa)
+            await session.commit()
+            await session.refresh(empresa)
+
+        # Asignar empresa_id a usuarios que no tengan uno (migración)
+        await session.execute(
+            update(Usuario)
+            .where(Usuario.empresa_id.is_(None))
+            .values(empresa_id=empresa.id),
+        )
+        await session.commit()
+
+        # Asignar empresa_id a pedidos que no tengan uno (migración)
+        from app.models import Pedido
+
+        await session.execute(
+            update(Pedido)
+            .where(Pedido.empresa_id.is_(None))
+            .values(empresa_id=empresa.id),
+        )
+        await session.commit()
