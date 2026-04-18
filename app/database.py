@@ -47,7 +47,8 @@ async def init_db() -> None:
     """Crea todas las tablas definidas en los modelos.
 
     Se ejecuta en el lifespan de FastAPI al arrancar.
-    En producción usar Alembic migrations en vez de create_all.
+    Es idempotente: no recrea tablas que ya existen.
+    Las migraciones con Alembic se ejecutan desde el entrypoint Docker.
     """
     async with engine.begin() as conn:
         from app.models import Base as ModelBase

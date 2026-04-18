@@ -35,5 +35,7 @@ ENV PYTHONUNBUFFERED=1
 ENV APP_ENV=production
 ENV PYTHONPATH=/app
 
-# Ejecutar con uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Entrypoint: ejecutar migraciones + uvicorn
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
