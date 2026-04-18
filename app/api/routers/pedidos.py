@@ -1,14 +1,14 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Form, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import Pedido, Usuario
+from app.services import pedido_service
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -65,12 +65,10 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
         total=total,
     )
 
-    db.add(nuevo_pedido)
-    await db.commit()
-    await db.refresh(nuevo_pedido)
+    saved = await pedido_service.crear_pedido(db, nuevo_pedido)
 
     return templates.TemplateResponse(
-        request, "partials/success.html", {"mensaje": f"✅ Pedido #{nuevo_pedido.id} guardado exitosamente"},
+        request, "partials/success.html", {"mensaje": f"✅ Pedido #{saved.id} guardado exitosamente"},
     )
 
 
@@ -94,14 +92,7 @@ async def buscar_pedidos(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    query = (
-        select(Pedido)
-        .where((Pedido.celular.contains(termino)) | (Pedido.apellido.ilike(f"%{termino}%")))
-        .order_by(Pedido.fecha_creacion.desc())
-    )
-
-    result = await db.execute(query)
-    pedidos: list[Pedido] = list(result.scalars().all())
+    pedidos = await pedido_service.buscar_pedidos(db, termino)
 
     return templates.TemplateResponse(
         request, "partials/resultados_busqueda.html", {"pedidos": pedidos, "termino": termino},
@@ -115,11 +106,7 @@ async def ver_pedido(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    from fastapi import HTTPException
-
-    query = select(Pedido).where(Pedido.id == pedido_id)
-    result = await db.execute(query)
-    pedido: Pedido | None = result.scalar_one_or_none()
+    pedido = await pedido_service.get_pedido(db, pedido_id)
 
     if pedido is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
