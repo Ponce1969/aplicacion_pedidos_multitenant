@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import Pedido, Usuario
+from app.repositories import cliente_repo, producto_repo
 from app.services import pedido_service
 
 router = APIRouter()
@@ -35,37 +37,100 @@ async def nuevo_pedido_form(
     )
 
 
+# --- HTMX: Buscar clientes (autocompletado) ---
+
+
+@router.get("/api/clientes/buscar")
+async def buscar_clientes(
+    request: Request,
+    q: str = "",
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    if len(q) < 2:
+        return HTMLResponse("")
+
+    clientes = await cliente_repo.search(db, q)
+    return templates.TemplateResponse(
+        request, "partials/clientes_resultado.html", {"clientes": clientes},
+    )
+
+
+# --- HTMX: Buscar productos (autocompletado) ---
+
+
+@router.get("/api/productos/buscar")
+async def buscar_productos(
+    request: Request,
+    q: str = "",
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    if len(q) < 2:
+        return HTMLResponse("")
+
+    productos = await producto_repo.search(db, q)
+    return templates.TemplateResponse(
+        request, "partials/productos_resultado.html", {"productos": productos},
+    )
+
+
+# --- Guardar pedido (soporta items JSON) ---
+
+
 @router.post("/guardar-pedido")
 async def guardar_pedido(  # noqa: PLR0913 — too many args
     request: Request,
-    nombre: str = Form(...),
-    apellido: str = Form(...),
-    celular: str = Form(...),
-    direccion: str = Form(...),
-    hora_entrega: str = Form(...),
-    fecha_entrega: str = Form(...),
-    pedido_detalle: str = Form(...),
-    total: float = Form(...),
+    nombre: str = Form(""),
+    apellido: str = Form(""),
+    celular: str = Form(""),
+    direccion: str = Form(""),
+    hora_entrega: str = Form(""),
+    fecha_entrega: str = Form(""),
+    pedido_detalle: str = Form(""),
+    total: float = Form(0.0),
+    cliente_id: str = Form(""),
+    items_json: str = Form("[]"),
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     # Convertir fecha string a datetime con timezone
-    fecha_dt: datetime = datetime.strptime(fecha_entrega, "%Y-%m-%d")
-    fecha_dt = fecha_dt.replace(tzinfo=UTC)
+    fecha_dt: datetime | None = None
+    if fecha_entrega:
+        fecha_dt = datetime.strptime(fecha_entrega, "%Y-%m-%d").replace(tzinfo=UTC)
 
-    nuevo_pedido = Pedido(
-        usuario_id=current_user.id,
-        nombre=nombre,
-        apellido=apellido,
-        celular=celular,
-        direccion=direccion,
-        hora_entrega=hora_entrega,
-        fecha_entrega=fecha_dt,
-        pedido_detalle=pedido_detalle,
-        total=total,
-    )
+    # Resolver cliente_id
+    cid: int | None = int(cliente_id) if cliente_id else None
 
-    saved = await pedido_service.crear_pedido(db, nuevo_pedido)
+    # Si hay items JSON, usar el nuevo flujo
+    items: list[dict] = json.loads(items_json) if items_json else []
+
+    if items:
+        nuevo_pedido = Pedido(
+            usuario_id=current_user.id,
+            cliente_id=cid,
+            nombre=nombre,
+            apellido=apellido,
+            celular=celular,
+            direccion=direccion,
+            hora_entrega=hora_entrega,
+            fecha_entrega=fecha_dt,
+            pedido_detalle=pedido_detalle,
+        )
+        saved = await pedido_service.crear_pedido_con_items(db, nuevo_pedido, items)
+    else:
+        # Flujo legacy (sin items)
+        nuevo_pedido = Pedido(
+            usuario_id=current_user.id,
+            cliente_id=cid,
+            nombre=nombre,
+            apellido=apellido,
+            celular=celular,
+            direccion=direccion,
+            hora_entrega=hora_entrega,
+            fecha_entrega=fecha_dt,
+            pedido_detalle=pedido_detalle,
+            total=total,
+        )
+        saved = await pedido_service.crear_pedido(db, nuevo_pedido)
 
     return templates.TemplateResponse(
         request, "partials/success.html", {"mensaje": f"✅ Pedido #{saved.id} guardado exitosamente"},
