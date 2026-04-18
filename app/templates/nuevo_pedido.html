@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo Pedido - Barraca Pedidos{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+    <h2 class="text-2xl font-bold text-gray-900 mb-6">📝 Nuevo Pedido</h2>
+
+    <form hx-post="/guardar-pedido" hx-target="#resultado" hx-swap="innerHTML"
+          class="space-y-6">
+        <!-- Datos del cliente -->
+        <fieldset class="border rounded-md p-4">
+            <legend class="text-lg font-semibold text-gray-700 px-2">Datos del Cliente</legend>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre</label>
+                    <input id="nombre" name="nombre" type="text" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Juan">
+                </div>
+                <div>
+                    <label for="apellido" class="block text-sm font-medium text-gray-700">Apellido</label>
+                    <input id="apellido" name="apellido" type="text" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Pérez">
+                </div>
+                <div>
+                    <label for="celular" class="block text-sm font-medium text-gray-700">Celular</label>
+                    <input id="celular" name="celular" type="tel" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="+595991234567">
+                </div>
+                <div>
+                    <label for="direccion" class="block text-sm font-medium text-gray-700">Dirección de Entrega</label>
+                    <input id="direccion" name="direccion" type="text" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Calle y número">
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Datos del pedido -->
+        <fieldset class="border rounded-md p-4">
+            <legend class="text-lg font-semibold text-gray-700 px-2">Datos del Pedido</legend>
+            <div class="space-y-4">
+                <div>
+                    <label for="pedido_detalle" class="block text-sm font-medium text-gray-700">Detalle del Pedido</label>
+                    <textarea id="pedido_detalle" name="pedido_detalle" rows="5" required
+                              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Ej:&#10;Clavos 3&quot; - 2kg&#10;Martillo - 1 unidad&#10;Cemento - 1 bolsa"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Un producto por línea. Formato: Producto - Cantidad</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="fecha_entrega" class="block text-sm font-medium text-gray-700">Fecha de Entrega</label>
+                        <input id="fecha_entrega" name="fecha_entrega" type="date" required
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="hora_entrega" class="block text-sm font-medium text-gray-700">Hora de Entrega</label>
+                        <input id="hora_entrega" name="hora_entrega" type="time" required
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="total" class="block text-sm font-medium text-gray-700">Total ($)</label>
+                        <input id="total" name="total" type="number" step="0.01" min="0.01" required
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="150000">
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <div>
+            <button type="submit"
+                    class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-md text-lg">
+                💾 Guardar Pedido
+            </button>
+        </div>
+    </form>
+
+    <div id="resultado" class="mt-4"></div>
+</div>
+{% endblock %}

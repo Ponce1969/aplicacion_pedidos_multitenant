@@ -1,0 +1,45 @@
+<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="this.remove()">
+    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full m-4 p-6" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Pedido #{{ pedido.id }}</h3>
+            <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <h4 class="font-semibold text-gray-700">Cliente</h4>
+                <p>{{ pedido.nombre }} {{ pedido.apellido }}</p>
+                <p class="text-sm text-gray-600">📱 {{ pedido.celular }}</p>
+                <p class="text-sm text-gray-600">📍 {{ pedido.direccion }}</p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-gray-700">Entrega</h4>
+                <p>📅 {{ pedido.fecha_entrega.strftime('%d/%m/%Y') if pedido.fecha_entrega else 'Pendiente' }}</p>
+                <p>⏰ {{ pedido.hora_entrega }}</p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-gray-700">Detalle del Pedido</h4>
+                <pre class="bg-gray-50 p-2 rounded text-sm whitespace-pre-wrap">{{ pedido.pedido_detalle }}</pre>
+            </div>
+
+            <div class="flex justify-between items-center pt-4 border-t">
+                <div>
+                    <span class="text-sm text-gray-600">Estado:</span>
+                    <span class="px-2 py-1 rounded ml-2 text-sm
+                         {% if pedido.estado == 'pendiente' %}bg-yellow-100 text-yellow-800
+                         {% elif pedido.estado == 'entregado' %}bg-green-100 text-green-800
+                         {% else %}bg-red-100 text-red-800{% endif %}">
+                        {{ pedido.estado }}
+                    </span>
+                </div>
+                <div class="text-xl font-bold text-green-600">$ {{ "{:,.0f}".format(pedido.total) }}</div>
+            </div>
+
+            <div class="text-xs text-gray-500 text-center">
+                Creado: {{ pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}
+            </div>
+        </div>
+    </div>
+</div>

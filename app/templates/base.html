@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Barraca Pedidos{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css">
+    <script>
+        // Auto-refresh token cada 50 minutos
+        setInterval(() => {
+            fetch('/api/refresh-token', { method: 'POST' });
+        }, 50 * 60 * 1000);
+
+        // Indicador de carga HTMX
+        document.body.addEventListener('htmx:beforeRequest', () => {
+            document.getElementById('loading').classList.remove('hidden');
+        });
+        document.body.addEventListener('htmx:afterRequest', () => {
+            document.getElementById('loading').classList.add('hidden');
+        });
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Loading indicator -->
+    <div id="loading" class="hidden fixed top-0 left-0 w-full h-1 bg-blue-500 animate-pulse z-50"></div>
+
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex gap-4 items-center">
+                <a href="/" class="text-xl font-bold hover:underline">🏠 BarracaPedidos</a>
+                <a href="/nuevo-pedido" class="hover:underline">📝 Nuevo Pedido</a>
+                <a href="/buscar" class="hover:underline">🔍 Buscar</a>
+                <a href="/dashboard" class="hover:underline">📊 Dashboard</a>
+                {% if user and user.is_admin %}
+                <a href="/admin/usuarios" class="hover:underline">👥 Usuarios</a>
+                {% endif %}
+            </div>
+            <div class="flex gap-4 items-center">
+                <span class="text-sm">👋 {{ user.nombre if user else 'Invitado' }}</span>
+                <form hx-post="/api/logout" hx-swap="none" class="inline">
+                    <button type="submit" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-sm">
+                        Cerrar Sesión
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash messages -->
+    <div id="flash-messages" class="container mx-auto mt-4">
+        {% block flash %}{% endblock %}
+    </div>
+
+    <!-- Main content -->
+    <main class="container mx-auto p-4">
+        <div id="content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-400 text-center p-4 mt-8">
+        <p class="text-sm">BarracaPedidos &copy; 2024 — Sistema de Gestión de Pedidos</p>
+    </footer>
+</body>
+</html>
