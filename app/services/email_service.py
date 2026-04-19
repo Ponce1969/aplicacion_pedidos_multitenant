@@ -58,9 +58,9 @@ def send_password_reset_email(recipient_email: str, token: str, user_name: str) 
                 server.starttls()
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)
-
-        logger.info("Email de reseteo enviado a %s", recipient_email)
-        return True
     except Exception:
         logger.exception("Error enviando email de reseteo a %s", recipient_email)
         return False
+    else:
+        logger.info("Email de reseteo enviado a %s", recipient_email)
+        return True

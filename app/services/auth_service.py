@@ -8,15 +8,14 @@ from app.auth import (
     create_refresh_token,
     get_password_hash,
     logout_user,
-    refresh_access_token,
     verify_password,
 )
 from app.config import settings
-from app.models import Empresa, Usuario
+from app.models import Usuario
 from app.repositories import usuario_repo
 
 
-async def register_user(
+async def register_user(  # noqa: PLR0913 — registration needs multiple fields
     db: AsyncSession, email: str, nombre: str, apellido: str, password: str,
     empresa_id: int,
 ) -> Usuario | str:

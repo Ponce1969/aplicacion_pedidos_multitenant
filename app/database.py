@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -51,15 +52,12 @@ async def init_db() -> None:
     Las migraciones con Alembic se ejecutan desde el entrypoint Docker.
     También crea la empresa default y asigna usuarios existentes sin empresa.
     """
-    async with engine.begin() as conn:
-        from app.models import Base as ModelBase
+    from app.models import Base as ModelBase  # noqa: PLC0415 — avoid circular import  # type: ignore[attr-defined]
 
+    async with engine.begin() as conn:
         await conn.run_sync(ModelBase.metadata.create_all)
 
-    # Crear empresa default si no existe
-    from sqlalchemy import select, update
-
-    from app.models import Empresa, Usuario
+    from app.models import Empresa, Pedido, Usuario  # noqa: PLC0415 — avoid circular import
 
     async with async_session_factory() as session:
         result = await session.execute(select(Empresa).where(Empresa.slug == "default"))
@@ -84,8 +82,6 @@ async def init_db() -> None:
         await session.commit()
 
         # Asignar empresa_id a pedidos que no tengan uno (migración)
-        from app.models import Pedido
-
         await session.execute(
             update(Pedido)
             .where(Pedido.empresa_id.is_(None))

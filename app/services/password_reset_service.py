@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import get_password_hash
 from app.config import settings
 from app.models import PasswordResetToken, Usuario
-from app.services import auth_service
 from app.services.email_service import send_password_reset_email
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def create_reset_token(db: AsyncSession, email: str) -> str | None:
@@ -57,7 +60,7 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> str
         return "Usuario no encontrado"
 
     # Hashear nueva contraseña
-    usuario.password_hash = auth_service.hash_password(new_password)
+    usuario.password_hash = get_password_hash(new_password)  # type: ignore[attr-defined]
     reset_token.usado = True
     await db.commit()
 

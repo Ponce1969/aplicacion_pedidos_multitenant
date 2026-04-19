@@ -12,7 +12,7 @@ async def crear_pedido(db: AsyncSession, pedido: Pedido) -> Pedido:
 
 
 async def crear_pedido_con_items(
-    db: AsyncSession, pedido: Pedido, items: list[dict],
+    db: AsyncSession, pedido: Pedido, items: list[dict[str, float | int | str]],
 ) -> Pedido:
     """Crea un pedido con sus líneas de items. Calcula el total automáticamente."""
     subtotal = 0.0
@@ -98,7 +98,7 @@ async def delete_pedido(db: AsyncSession, pedido_id: int, empresa_id: int) -> bo
 
 
 async def update_pedido(
-    db: AsyncSession, pedido_id: int, empresa_id: int, datos: dict,
+    db: AsyncSession, pedido_id: int, empresa_id: int, datos: dict[str, float | int | str | None],
 ) -> Pedido | None:
     """Actualiza campos de un pedido existente."""
     pedido = await pedido_repo.get_by_id(db, pedido_id)

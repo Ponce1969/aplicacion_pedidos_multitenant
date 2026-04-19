@@ -4,14 +4,13 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
+# Routers
+from app.api.routers import admin, auth, dashboard, pedidos
 from app.auth import get_password_hash
 from app.config import settings
 from app.database import get_db, init_db
 from app.middlewares import AuthMiddleware
 from app.models import Usuario
-
-# Routers
-from app.api.routers import admin, auth, dashboard, pedidos
 
 
 @asynccontextmanager

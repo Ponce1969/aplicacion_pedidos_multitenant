@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     ARGON2_HASH_LEN: int = 32
     ARGON2_SALT_LEN: int = 16
 
-    # SMTP (Email)
+    # SMTP (Email)  # noqa: ERA001 — section header
     SMTP_HOST: str = Field(default="smtp.gmail.com", alias="SMTP_HOST")
     SMTP_PORT: int = Field(default=587, alias="SMTP_PORT")
     SMTP_USER: str = Field(default="", alias="SMTP_USER")

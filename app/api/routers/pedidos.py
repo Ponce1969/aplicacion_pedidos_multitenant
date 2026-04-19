@@ -59,7 +59,7 @@ async def entregas_page(
 ) -> HTMLResponse:
     fecha_filtro: date | None = None
     if fecha:
-        fecha_filtro = datetime.strptime(fecha, "%Y-%m-%d").date()
+        fecha_filtro = datetime.strptime(fecha, "%Y-%m-%d").replace(tzinfo=UTC).date()
 
     pedidos = await pedido_service.get_pedidos_pendientes(db, current_user.empresa_id, fecha_filtro)
     hoy = datetime.now(UTC).strftime("%Y-%m-%d")
@@ -175,7 +175,7 @@ async def buscar_clientes(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    if len(q) < 2:
+    if len(q) < 2:  # noqa: PLR2004 — min search chars
         return HTMLResponse("")
 
     clientes = await cliente_repo.search(db, q, current_user.empresa_id)
@@ -194,7 +194,7 @@ async def buscar_productos(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    if len(q) < 2:
+    if len(q) < 2:  # noqa: PLR2004 — min search chars
         return HTMLResponse("")
 
     productos = await producto_repo.search(db, q, current_user.empresa_id)
@@ -231,7 +231,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
     cid: int | None = int(cliente_id) if cliente_id else None
 
     # Si hay items JSON, usar el nuevo flujo
-    items: list[dict] = json.loads(items_json) if items_json else []
+    items: list[dict[str, float | int | str]] = json.loads(items_json) if items_json else []
 
     if items:
         nuevo_pedido = Pedido(

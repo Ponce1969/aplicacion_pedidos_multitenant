@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Form, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -89,10 +89,9 @@ async def refresh_token_endpoint(
 ) -> JSONResponse | RedirectResponse:
     refresh_token_value: str | None = request.cookies.get("refresh_token")
     if refresh_token_value is None:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
 
+    response: JSONResponse | RedirectResponse
     try:
         new_access_token: str = await refresh_access_token(refresh_token_value, db)
         response = JSONResponse({"status": "ok"})
@@ -102,12 +101,11 @@ async def refresh_token_endpoint(
             httponly=True,
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
-        return response
     except Exception:
         response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
-        return response
+    return response
 
 
 @router.get("/forgot-password", response_class=HTMLResponse)
@@ -121,7 +119,7 @@ async def forgot_password(
     email: str = Form(...),
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    result = await create_reset_token(db, email)
+    await create_reset_token(db, email)
     # Siempre mostramos el mismo mensaje para no revelar si el email existe
     return templates.TemplateResponse(
         request, "partials/success.html",
@@ -147,7 +145,7 @@ async def reset_password_submit(
             request, "partials/error.html", {"error": "Las contraseñas no coinciden"},
         )
 
-    if len(new_password) < 6:
+    if len(new_password) < 6:  # noqa: PLR2004 — min password length
         return templates.TemplateResponse(
             request, "partials/error.html", {"error": "La contraseña debe tener al menos 6 caracteres"},
         )
