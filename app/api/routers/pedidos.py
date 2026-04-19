@@ -92,7 +92,7 @@ async def eliminar_pedido(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     return HTMLResponse(content="", status_code=status.HTTP_200_OK,
-                        headers={"HX-Trigger": "pedidoEliminado"})
+                        headers={"HX-Redirect": "/buscar"})
 
 
 @router.get("/editar-pedido/{pedido_id}", response_class=HTMLResponse)
