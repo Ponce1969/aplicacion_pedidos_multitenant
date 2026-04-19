@@ -1,27 +1,56 @@
 {% if pedidos %}
 <h3 class="text-lg font-semibold text-gray-900 mb-4">Resultados para "{{ termino }}" ({{ pedidos|length }})</h3>
-<ul class="space-y-2">
+<ul class="space-y-3">
     {% for pedido in pedidos %}
-    <li class="p-3 bg-white border rounded shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-        hx-get="/pedido/{{ pedido.id }}"
-        hx-target="#detalle-modal"
-        hx-swap="innerHTML">
-        <div class="flex justify-between items-start">
+    <li class="p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow">
+        <div class="flex justify-between items-start mb-2">
             <div>
-                <div class="font-semibold">#{{ pedido.id }} - {{ pedido.nombre }} {{ pedido.apellido }}</div>
+                <div class="font-semibold text-lg">#{{ pedido.id }} - {{ pedido.nombre }} {{ pedido.apellido }}</div>
                 <div class="text-sm text-gray-600">📱 {{ pedido.celular }}</div>
                 <div class="text-sm text-gray-600">📍 {{ pedido.direccion }}</div>
+                {% if pedido.fecha_entrega or pedido.hora_entrega %}
+                <div class="text-sm text-gray-600">📅 {{ pedido.fecha_entrega.strftime('%d/%m/%Y') if pedido.fecha_entrega else '' }} ⏰ {{ pedido.hora_entrega }}</div>
+                {% endif %}
             </div>
             <div class="text-right">
-                <div class="font-bold text-green-600">$ {{ "{:,.0f}".format(pedido.total) }}</div>
-                <div class="text-xs px-2 py-1 rounded
+                <div class="font-bold text-green-600 text-lg">$ {{ "{:,.0f}".format(pedido.total) }}</div>
+                <span class="text-xs px-2 py-1 rounded
                      {% if pedido.estado == 'pendiente' %}bg-yellow-100 text-yellow-800
                      {% elif pedido.estado == 'entregado' %}bg-green-100 text-green-800
                      {% else %}bg-red-100 text-red-800{% endif %}">
                     {{ pedido.estado }}
-                </div>
+                </span>
             </div>
         </div>
+        <!-- Items del pedido -->
+        {% if pedido.items %}
+        <div class="mt-2 border-t pt-2">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-gray-500 text-xs">
+                        <th class="text-left pb-1">Producto</th>
+                        <th class="text-right pb-1">Cant.</th>
+                        <th class="text-right pb-1">P.Unit.</th>
+                        <th class="text-right pb-1">Subt.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in pedido.items %}
+                    <tr class="border-b border-gray-100">
+                        <td class="py-1">{{ item.descripcion }}</td>
+                        <td class="py-1 text-right">{{ item.cantidad }}</td>
+                        <td class="py-1 text-right">$ {{ "{:,.0f}".format(item.precio_unitario) }}</td>
+                        <td class="py-1 text-right">$ {{ "{:,.0f}".format(item.subtotal) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% elif pedido.pedido_detalle %}
+        <div class="mt-2 border-t pt-2">
+            <pre class="text-sm text-gray-700 whitespace-pre-wrap">{{ pedido.pedido_detalle }}</pre>
+        </div>
+        {% endif %}
     </li>
     {% endfor %}
 </ul>

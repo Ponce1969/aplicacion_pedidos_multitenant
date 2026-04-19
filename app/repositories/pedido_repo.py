@@ -41,3 +41,19 @@ async def get_by_month(db: AsyncSession, primer_dia_mes: date, empresa_id: int) 
     )
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+async def get_pending_by_empresa(
+    db: AsyncSession, empresa_id: int, fecha: date | None = None,
+) -> list[Pedido]:
+    """Obtiene pedidos pendientes, opcionalmente filtrados por fecha de entrega."""
+    query = select(Pedido).where(
+        Pedido.empresa_id == empresa_id,
+        Pedido.estado == "pendiente",
+    )
+    if fecha is not None:
+        query = query.where(Pedido.fecha_entrega == fecha)
+
+    query = query.order_by(Pedido.fecha_entrega.asc().nulls_last(), Pedido.hora_entrega)
+    result = await db.execute(query)
+    return list(result.scalars().all())

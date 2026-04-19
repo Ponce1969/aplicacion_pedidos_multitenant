@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -35,6 +35,50 @@ async def nuevo_pedido_form(
             "user": current_user,
         },
     )
+
+
+@router.get("/entregas", response_class=HTMLResponse)
+async def entregas_page(
+    request: Request,
+    fecha: str | None = None,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    fecha_filtro: date | None = None
+    if fecha:
+        fecha_filtro = datetime.strptime(fecha, "%Y-%m-%d").date()
+
+    pedidos = await pedido_service.get_pedidos_pendientes(db, current_user.empresa_id, fecha_filtro)
+    hoy = datetime.now(UTC).strftime("%Y-%m-%d")
+
+    return templates.TemplateResponse(
+        request, "entregas.html",
+        {
+            "user": current_user,
+            "pedidos": pedidos,
+            "fecha": fecha or hoy,
+            "hoy": hoy,
+        },
+    )
+
+
+@router.post("/api/pedido/{pedido_id}/marcar-entregado")
+async def marcar_entregado(
+    pedido_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    pedido = await pedido_service.get_pedido(db, pedido_id)
+    if pedido is None or pedido.empresa_id != current_user.empresa_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    pedido.estado = "entregado"
+    await db.commit()
+
+    # Devolver la fila actualizada (o vacío para que HTMX la quite)
+    return HTMLResponse(content="", status_code=status.HTTP_200_OK,
+                        headers={"HX-Trigger": "pedidoEntregado"})
 
 
 # --- HTMX: Buscar clientes (autocompletado) ---

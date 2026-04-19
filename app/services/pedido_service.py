@@ -80,3 +80,10 @@ async def get_pedidos_mes(db: AsyncSession, empresa_id: int) -> list[Pedido]:
     hoy: date = datetime.now(UTC).date()
     primer_dia_mes: date = hoy.replace(day=1)
     return await pedido_repo.get_by_month(db, primer_dia_mes, empresa_id)
+
+
+async def get_pedidos_pendientes(
+    db: AsyncSession, empresa_id: int, fecha: date | None = None,
+) -> list[Pedido]:
+    """Obtiene pedidos pendientes para armado de entregas."""
+    return await pedido_repo.get_pending_by_empresa(db, empresa_id, fecha)
