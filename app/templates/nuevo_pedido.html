@@ -7,7 +7,7 @@
     <h2 class="text-2xl font-bold text-gray-900 mb-6">📝 Nuevo Pedido</h2>
 
     <form id="pedido-form" hx-post="/guardar-pedido" hx-target="#resultado" hx-swap="innerHTML"
-          hx-before-send="prepararItems()" class="space-y-6">
+          onsubmit="prepararItems()" class="space-y-6">
 
         <!-- Cliente: buscar o ingresar manualmente -->
         <fieldset class="border rounded-md p-4">
