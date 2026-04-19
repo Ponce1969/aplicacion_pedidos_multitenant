@@ -33,7 +33,8 @@ async def dashboard(
             "total_ventas": total_ventas,
             "cantidad_pedidos": cantidad_pedidos,
             "top_productos": top_productos,
-            "pedidos_recientes": pedidos_mes[:10],
+            "pendientes": sum(1 for p in pedidos_mes if p.estado == "pendiente"),
+            "entregados": sum(1 for p in pedidos_mes if p.estado == "entregado"),
             "mes_actual": hoy.strftime("%B %Y"),
         },
     )

@@ -42,31 +42,24 @@
             {% endif %}
         </div>
 
-        <!-- Recent Orders -->
+        <!-- Estado de Pedidos -->
         <div class="bg-white rounded-lg shadow-lg p-6">
-            <h3 class="text-xl font-bold text-gray-900 mb-4">📋 Pedidos Recientes</h3>
-            {% if pedidos_recientes %}
-            <ul class="space-y-2 max-h-64 overflow-y-auto">
-                {% for pedido in pedidos_recientes %}
-                <li class="p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
-                    hx-get="/pedido/{{ pedido.id }}"
-                    hx-target="#detalle-modal"
-                    hx-swap="innerHTML">
-                    <div class="flex justify-between">
-                        <span class="font-semibold">#{{ pedido.id }} - {{ pedido.apellido }}</span>
-                        <span class="text-sm text-gray-500">{{ pedido.fecha_creacion.strftime('%d/%m %H:%M') }}</span>
-                    </div>
-                    <div class="text-sm text-gray-600">$ {{ "{:,.0f}".format(pedido.total) }} - {{ pedido.estado }}</div>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p class="text-gray-500">No hay pedidos recientes</p>
-            {% endif %}
+            <h3 class="text-xl font-bold text-gray-900 mb-4">� Estado de Pedidos</h3>
+            <div class="space-y-3">
+                <a href="/entregas" class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
+                    <span class="text-yellow-700 font-medium">⏳ Pendientes</span>
+                    <span class="text-yellow-800 font-bold">{{ pendientes }}</span>
+                </a>
+                <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <span class="text-green-700 font-medium">✅ Entregados este mes</span>
+                    <span class="text-green-800 font-bold">{{ entregados }}</span>
+                </div>
+                <a href="/pedidos" class="flex items-center justify-between p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                    <span class="text-blue-700 font-medium">📋 Ver todos los pedidos</span>
+                    <span class="text-blue-600">→</span>
+                </a>
+            </div>
         </div>
     </div>
-
-    <!-- Modal for order details -->
-    <div id="detalle-modal"></div>
 </div>
 {% endblock %}

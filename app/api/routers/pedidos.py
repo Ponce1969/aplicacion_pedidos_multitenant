@@ -21,7 +21,7 @@ async def home(
     request: Request,
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
 ) -> RedirectResponse:
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/pedidos", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/nuevo-pedido", response_class=HTMLResponse)
@@ -34,6 +34,19 @@ async def nuevo_pedido_form(
         {
             "user": current_user,
         },
+    )
+
+
+@router.get("/pedidos", response_class=HTMLResponse)
+async def pedidos_page(
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    pedidos = await pedido_service.get_pedidos_mes(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request, "pedidos.html",
+        {"user": current_user, "pedidos": pedidos},
     )
 
 

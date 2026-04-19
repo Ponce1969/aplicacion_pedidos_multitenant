@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Pedidos{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h2 class="text-3xl font-bold text-gray-900">📋 Pedidos del Mes</h2>
+        <a href="/nuevo-pedido" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium">
+            ➕ Nuevo Pedido
+        </a>
+    </div>
+
+    {% if pedidos %}
+    <div class="space-y-3">
+        {% for pedido in pedidos %}
+        <div class="bg-white border rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-1">
+                        <span class="font-bold text-lg">#{{ pedido.id }}</span>
+                        <span class="px-2 py-1 rounded text-xs
+                             {% if pedido.estado == 'pendiente' %}bg-yellow-100 text-yellow-800
+                             {% elif pedido.estado == 'entregado' %}bg-green-100 text-green-800
+                             {% else %}bg-red-100 text-red-800{% endif %}">
+                            {{ pedido.estado }}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-1 text-sm text-gray-600">
+                        <div>{{ pedido.nombre }} {{ pedido.apellido }}</div>
+                        <div>📱 {{ pedido.celular }}</div>
+                        <div>📍 {{ pedido.direccion }}</div>
+                        <div>⏰ {{ pedido.hora_entrega }}
+                            {% if pedido.fecha_entrega %} — {{ pedido.fecha_entrega.strftime('%d/%m') }}{% endif %}
+                        </div>
+                    </div>
+
+                    {% if pedido.items %}
+                    <div class="mt-2 border-t pt-2">
+                        <table class="w-full text-sm">
+                            <tbody>
+                                {% for item in pedido.items %}
+                                <tr class="border-b border-gray-100">
+                                    <td class="py-1">{{ item.descripcion }}</td>
+                                    <td class="py-1 text-right">{{ item.cantidad }}</td>
+                                    <td class="py-1 text-right">$ {{ "{:,.0f}".format(item.subtotal) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% elif pedido.pedido_detalle %}
+                    <div class="mt-2 border-t pt-2 text-sm text-gray-600">{{ pedido.pedido_detalle }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="text-right ml-4 flex flex-col items-end gap-2">
+                    <div class="text-xl font-bold text-green-600">$ {{ "{:,.0f}".format(pedido.total) }}</div>
+                    <div class="text-xs text-gray-400">{{ pedido.fecha_creacion.strftime('%d/%m %H:%M') }}</div>
+                    <div class="flex gap-2">
+                        <a href="/editar-pedido/{{ pedido.id }}" class="text-blue-500 hover:text-blue-700 text-sm">✏️</a>
+                        <button hx-delete="/api/pedido/{{ pedido.id }}"
+                                hx-confirm="¿Eliminar pedido #{{ pedido.id }}?"
+                                hx-target="closest .bg-white"
+                                hx-swap="outerHTML swap:0.3s"
+                                class="text-red-500 hover:text-red-700 text-sm">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-gray-50 border rounded-lg p-8 text-center text-gray-500">
+        <p class="text-lg">No hay pedidos este mes</p>
+        <a href="/nuevo-pedido" class="text-blue-600 hover:underline">Crear el primer pedido</a>
+    </div>
+    {% endif %}
+</div>
+<div id="detalle-modal"></div>
+{% endblock %}
