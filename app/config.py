@@ -35,6 +35,18 @@ class Settings(BaseSettings):
     ARGON2_HASH_LEN: int = 32
     ARGON2_SALT_LEN: int = 16
 
+    # SMTP (Email)
+    SMTP_HOST: str = Field(default="smtp.gmail.com", alias="SMTP_HOST")
+    SMTP_PORT: int = Field(default=587, alias="SMTP_PORT")
+    SMTP_USER: str = Field(default="", alias="SMTP_USER")
+    SMTP_PASSWORD: str = Field(default="", alias="SMTP_PASSWORD")
+    SMTP_FROM_EMAIL: str = Field(default="", alias="SMTP_FROM_EMAIL")
+    SMTP_USE_TLS: bool = Field(default=True, alias="SMTP_USE_TLS")
+
+    # Password Reset
+    PASSWORD_RESET_EXPIRE_MINUTES: int = Field(default=30, alias="PASSWORD_RESET_EXPIRE_MINUTES")
+    BASE_URL: str = Field(default="http://localhost:8000", alias="BASE_URL")
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,

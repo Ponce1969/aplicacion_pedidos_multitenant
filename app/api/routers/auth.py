@@ -7,6 +7,7 @@ from app.auth import refresh_access_token
 from app.config import settings
 from app.database import get_db
 from app.services import auth_service
+from app.services.password_reset_service import create_reset_token, reset_password
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -107,3 +108,57 @@ async def refresh_token_endpoint(
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
         return response
+
+
+@router.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "forgot_password.html")
+
+
+@router.post("/api/forgot-password")
+async def forgot_password(
+    request: Request,
+    email: str = Form(...),
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    result = await create_reset_token(db, email)
+    # Siempre mostramos el mismo mensaje para no revelar si el email existe
+    return templates.TemplateResponse(
+        request, "partials/success.html",
+        {"mensaje": "Si el email está registrado, recibirás un link de recuperación en tu casilla."},
+    )
+
+
+@router.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(request: Request, token: str = "") -> HTMLResponse:
+    return templates.TemplateResponse(request, "reset_password.html", {"token": token})
+
+
+@router.post("/api/reset-password")
+async def reset_password_submit(
+    request: Request,
+    token: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    if new_password != confirm_password:
+        return templates.TemplateResponse(
+            request, "partials/error.html", {"error": "Las contraseñas no coinciden"},
+        )
+
+    if len(new_password) < 6:
+        return templates.TemplateResponse(
+            request, "partials/error.html", {"error": "La contraseña debe tener al menos 6 caracteres"},
+        )
+
+    error = await reset_password(db, token, new_password)
+    if error:
+        return templates.TemplateResponse(
+            request, "partials/error.html", {"error": error},
+        )
+
+    return templates.TemplateResponse(
+        request, "partials/success.html",
+        {"mensaje": "Contraseña actualizada. Ya podés iniciar sesión con tu nueva contraseña."},
+    )
