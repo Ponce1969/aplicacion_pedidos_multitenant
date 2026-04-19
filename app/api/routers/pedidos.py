@@ -76,9 +76,80 @@ async def marcar_entregado(
     pedido.estado = "entregado"
     await db.commit()
 
-    # Devolver la fila actualizada (o vacío para que HTMX la quite)
     return HTMLResponse(content="", status_code=status.HTTP_200_OK,
                         headers={"HX-Trigger": "pedidoEntregado"})
+
+
+@router.delete("/api/pedido/{pedido_id}")
+async def eliminar_pedido(
+    pedido_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    deleted = await pedido_service.delete_pedido(db, pedido_id, current_user.empresa_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    return HTMLResponse(content="", status_code=status.HTTP_200_OK,
+                        headers={"HX-Trigger": "pedidoEliminado"})
+
+
+@router.get("/editar-pedido/{pedido_id}", response_class=HTMLResponse)
+async def editar_pedido_form(
+    pedido_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    pedido = await pedido_service.get_pedido(db, pedido_id)
+    if pedido is None or pedido.empresa_id != current_user.empresa_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    return templates.TemplateResponse(
+        request, "editar_pedido.html",
+        {"user": current_user, "pedido": pedido},
+    )
+
+
+@router.post("/editar-pedido/{pedido_id}")
+async def editar_pedido_guardar(  # noqa: PLR0913
+    pedido_id: int,
+    request: Request,
+    nombre: str = Form(""),
+    apellido: str = Form(""),
+    celular: str = Form(""),
+    direccion: str = Form(""),
+    hora_entrega: str = Form(""),
+    fecha_entrega: str = Form(""),
+    pedido_detalle: str = Form(""),
+    estado: str = Form("pendiente"),
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    fecha_dt: datetime | None = None
+    if fecha_entrega:
+        fecha_dt = datetime.strptime(fecha_entrega, "%Y-%m-%d").replace(tzinfo=UTC)
+
+    datos = {
+        "nombre": nombre,
+        "apellido": apellido,
+        "celular": celular,
+        "direccion": direccion,
+        "hora_entrega": hora_entrega,
+        "fecha_entrega": fecha_dt,
+        "pedido_detalle": pedido_detalle,
+        "estado": estado,
+    }
+
+    pedido = await pedido_service.update_pedido(db, pedido_id, current_user.empresa_id, datos)
+    if pedido is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    return templates.TemplateResponse(
+        request, "partials/success.html",
+        {"mensaje": f"Pedido #{pedido.id} actualizado correctamente"},
+    )
 
 
 # --- HTMX: Buscar clientes (autocompletado) ---

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Pedido #{{ pedido.id }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
+    <h2 class="text-2xl font-bold text-gray-900 mb-6">✏️ Editar Pedido #{{ pedido.id }}</h2>
+
+    <form hx-post="/editar-pedido/{{ pedido.id }}" hx-target="#resultado" hx-swap="innerHTML"
+          class="space-y-6">
+
+        <!-- Datos del Cliente -->
+        <fieldset class="border rounded-md p-4">
+            <legend class="text-lg font-semibold text-gray-700 px-2">Datos del Cliente</legend>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre</label>
+                    <input id="nombre" name="nombre" type="text" required
+                           value="{{ pedido.nombre }}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="apellido" class="block text-sm font-medium text-gray-700">Apellido</label>
+                    <input id="apellido" name="apellido" type="text" required
+                           value="{{ pedido.apellido }}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="celular" class="block text-sm font-medium text-gray-700">Celular</label>
+                    <input id="celular" name="celular" type="tel" required
+                           value="{{ pedido.celular }}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="direccion" class="block text-sm font-medium text-gray-700">Dirección</label>
+                    <input id="direccion" name="direccion" type="text" required
+                           value="{{ pedido.direccion }}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Datos de Entrega -->
+        <fieldset class="border rounded-md p-4">
+            <legend class="text-lg font-semibold text-gray-700 px-2">Datos de Entrega</legend>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="fecha_entrega" class="block text-sm font-medium text-gray-700">Fecha de Entrega</label>
+                    <input id="fecha_entrega" name="fecha_entrega" type="date" required
+                           value="{{ pedido.fecha_entrega.strftime('%Y-%m-%d') if pedido.fecha_entrega else '' }}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="hora_entrega" class="block text-sm font-medium text-gray-700">Hora de Entrega</label>
+                    <input id="hora_entrega" name="hora_entrega" type="time" required
+                           value="{{ pedido.hora_entrega }}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Detalle del pedido -->
+        <fieldset class="border rounded-md p-4">
+            <legend class="text-lg font-semibold text-gray-700 px-2">Detalle del Pedido</legend>
+
+            {% if pedido.items %}
+            <div class="mb-4">
+                <h4 class="font-semibold text-gray-700 text-sm mb-2">Items del pedido:</h4>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-500 text-xs">
+                            <th class="text-left pb-1">Producto</th>
+                            <th class="text-right pb-1">Cant.</th>
+                            <th class="text-right pb-1">P.Unit.</th>
+                            <th class="text-right pb-1">Subt.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in pedido.items %}
+                        <tr class="border-b border-gray-100">
+                            <td class="py-1">{{ item.descripcion }}</td>
+                            <td class="py-1 text-right">{{ item.cantidad }}</td>
+                            <td class="py-1 text-right">$ {{ "{:,.0f}".format(item.precio_unitario) }}</td>
+                            <td class="py-1 text-right">$ {{ "{:,.0f}".format(item.subtotal) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="font-bold">
+                            <td colspan="3" class="pt-2 text-right">Total:</td>
+                            <td class="pt-2 text-right text-green-600">$ {{ "{:,.0f}".format(pedido.total) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <p class="text-xs text-gray-500 mt-2">💡 Para modificar los items, eliminá este pedido y creá uno nuevo.</p>
+            </div>
+            {% endif %}
+
+            <div>
+                <label for="pedido_detalle" class="block text-sm font-medium text-gray-700">Notas / Detalle adicional</label>
+                <textarea id="pedido_detalle" name="pedido_detalle" rows="3"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">{{ pedido.pedido_detalle }}</textarea>
+            </div>
+        </fieldset>
+
+        <!-- Estado -->
+        <fieldset class="border rounded-md p-4">
+            <legend class="text-lg font-semibold text-gray-700 px-2">Estado</legend>
+            <select name="estado" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="pendiente" {% if pedido.estado == 'pendiente' %}selected{% endif %}>⏳ Pendiente</option>
+                <option value="entregado" {% if pedido.estado == 'entregado' %}selected{% endif %}>✅ Entregado</option>
+                <option value="cancelado" {% if pedido.estado == 'cancelado' %}selected{% endif %}>❌ Cancelado</option>
+            </select>
+        </fieldset>
+
+        <div class="flex gap-4">
+            <button type="submit"
+                    class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md text-lg">
+                💾 Guardar Cambios
+            </button>
+            <a href="/buscar" class="flex-1 py-3 px-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-md text-lg text-center">
+                ↩️ Cancelar
+            </a>
+        </div>
+    </form>
+
+    <div id="resultado" class="mt-4"></div>
+</div>
+{% endblock %}

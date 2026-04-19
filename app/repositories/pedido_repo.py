@@ -57,3 +57,13 @@ async def get_pending_by_empresa(
     query = query.order_by(Pedido.fecha_entrega.asc().nulls_last(), Pedido.hora_entrega)
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+async def delete_pedido(db: AsyncSession, pedido_id: int) -> bool:
+    """Elimina un pedido por ID. Devuelve True si existía."""
+    pedido = await get_by_id(db, pedido_id)
+    if pedido is None:
+        return False
+    await db.delete(pedido)
+    await db.commit()
+    return True

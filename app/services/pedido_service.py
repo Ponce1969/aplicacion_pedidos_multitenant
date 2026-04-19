@@ -87,3 +87,28 @@ async def get_pedidos_pendientes(
 ) -> list[Pedido]:
     """Obtiene pedidos pendientes para armado de entregas."""
     return await pedido_repo.get_pending_by_empresa(db, empresa_id, fecha)
+
+
+async def delete_pedido(db: AsyncSession, pedido_id: int, empresa_id: int) -> bool:
+    """Elimina un pedido si pertenece a la empresa del usuario."""
+    pedido = await pedido_repo.get_by_id(db, pedido_id)
+    if pedido is None or pedido.empresa_id != empresa_id:
+        return False
+    return await pedido_repo.delete_pedido(db, pedido_id)
+
+
+async def update_pedido(
+    db: AsyncSession, pedido_id: int, empresa_id: int, datos: dict,
+) -> Pedido | None:
+    """Actualiza campos de un pedido existente."""
+    pedido = await pedido_repo.get_by_id(db, pedido_id)
+    if pedido is None or pedido.empresa_id != empresa_id:
+        return None
+
+    for campo, valor in datos.items():
+        if hasattr(pedido, campo) and campo not in ("id", "empresa_id", "fecha_creacion"):
+            setattr(pedido, campo, valor)
+
+    await db.commit()
+    await db.refresh(pedido)
+    return pedido

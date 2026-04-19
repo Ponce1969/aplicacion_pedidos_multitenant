@@ -60,6 +60,21 @@
                 <div class="text-xl font-bold text-green-600">$ {{ "{:,.0f}".format(pedido.total) }}</div>
             </div>
 
+            <!-- Acciones -->
+            <div class="flex gap-3 pt-3 border-t mt-3">
+                <a href="/editar-pedido/{{ pedido.id }}"
+                   class="flex-1 text-center py-2 px-3 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors">
+                    ✏️ Editar
+                </a>
+                <button hx-delete="/api/pedido/{{ pedido.id }}"
+                        hx-confirm="⚠️ ¿Estás seguro de eliminar el pedido #{{ pedido.id }}? Esta acción no se puede deshacer."
+                        hx-target="closest .fixed"
+                        hx-swap="outerHTML"
+                        class="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium transition-colors">
+                    🗑️ Eliminar
+                </button>
+            </div>
+
             <div class="text-xs text-gray-500 text-center">
                 Creado: {{ pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}
             </div>
