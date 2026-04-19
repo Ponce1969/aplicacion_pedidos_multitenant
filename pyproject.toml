@@ -68,7 +68,7 @@ strict_equality = true
 strict_concatenate = true
 
 [[tool.mypy.overrides]]
-module = ["asyncpg", "asyncpg.*"]
+module = ["asyncpg", "asyncpg.*", "alembic", "alembic.*"]
 ignore_missing_imports = true
 
 # ==================== RUFF ====================
