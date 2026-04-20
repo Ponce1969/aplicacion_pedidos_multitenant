@@ -20,6 +20,18 @@
         document.body.addEventListener('htmx:afterRequest', () => {
             document.getElementById('loading').classList.add('hidden');
         });
+
+        // CSRF: enviar token en cada request HTMX
+        function getCsrfToken() {
+            const match = document.cookie.match(/csrf_token=([^;]+)/);
+            return match ? decodeURIComponent(match[1]) : '';
+        }
+        document.body.addEventListener('htmx:configRequest', (event) => {
+            const token = getCsrfToken();
+            if (token) {
+                event.detail.headers['X-CSRF-Token'] = token;
+            }
+        });
     </script>
 </head>
 <body class="bg-gray-100 min-h-screen">

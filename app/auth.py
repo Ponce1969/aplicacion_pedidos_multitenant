@@ -18,6 +18,7 @@ class TokenPayload(TypedDict):
     sub: str
     exp: int
     type: str
+    empresa_id: int
 
 
 # Configurar Argon2 como hash principal
@@ -51,7 +52,8 @@ def create_access_token(
     """Crea JWT access token con expiración configurable.
 
     Args:
-        data: Payload del token. Debe contener 'sub' (user_id como string).
+        data: Payload del token. Debe contener 'sub' (user_id como string)
+              y opcionalmente 'empresa_id'.
         expires_delta: Tiempo hasta expiración. Default: settings.ACCESS_TOKEN_EXPIRE_MINUTES.
 
     Returns:
@@ -73,7 +75,8 @@ def create_refresh_token(data: dict[str, str]) -> str:
     """Crea refresh token con expiración larga.
 
     Args:
-        data: Payload del token. Debe contener 'sub' (user_id como string).
+        data: Payload del token. Debe contener 'sub' (user_id como string)
+              y opcionalmente 'empresa_id'.
 
     Returns:
         Token JWT codificado como string.
@@ -133,6 +136,7 @@ async def get_current_user(
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id_str: str | None = payload.get("sub")
         token_type: str | None = payload.get("type")
+        token_empresa_id: int | None = payload.get("empresa_id")
 
         if user_id_str is None or token_type != "access":
             raise HTTPException(
@@ -161,6 +165,19 @@ async def get_current_user(
             detail="Token inválido o expirado",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Validar empresa_id del token contra la DB (solo si el token tiene empresa_id)
+    if token_empresa_id is not None:
+        try:
+            token_empresa_id_int = int(token_empresa_id)
+        except (ValueError, TypeError):
+            token_empresa_id_int = None
+
+        if token_empresa_id_int is not None and token_empresa_id_int != user.empresa_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Token no pertenece a esta empresa",
+            )
 
     return user
 
@@ -266,4 +283,4 @@ async def refresh_access_token(
         )
 
     # Crear nuevo access token
-    return create_access_token(data={"sub": str(user.id)})
+    return create_access_token(data={"sub": str(user.id), "empresa_id": user.empresa_id})

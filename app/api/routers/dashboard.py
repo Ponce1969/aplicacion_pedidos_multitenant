@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Request
@@ -9,9 +10,12 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import Usuario
 from app.services import pedido_service
+from app.templates_env import get_templates
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+templates = get_templates()
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -27,7 +31,8 @@ async def dashboard(
     top_productos = pedido_service.calcular_top_productos(pedidos_mes)
 
     return templates.TemplateResponse(
-        request, "dashboard.html",
+        request,
+        "dashboard.html",
         {
             "user": current_user,
             "total_ventas": total_ventas,

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Pedido #{{ pedido.id }} — Imprimir</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #000;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header .pedido-num {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .header .fecha {
+            font-size: 11px;
+            color: #444;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 14px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .row.full {
+            flex-direction: column;
+        }
+
+        .label {
+            font-weight: bold;
+            min-width: 120px;
+        }
+
+        .value {
+            flex: 1;
+        }
+
+        .detalle-box {
+            border: 1px solid #000;
+            padding: 10px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            background: #fff;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .items-table th,
+        .items-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .items-table th {
+            background: #f0f0f0;
+            font-weight: bold;
+        }
+
+        .items-table .text-right {
+            text-align: right;
+        }
+
+        .total-box {
+            border: 2px solid #000;
+            padding: 15px;
+            text-align: right;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        .total-box .monto {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .firma-section {
+            margin-top: 50px;
+            page-break-inside: avoid;
+        }
+
+        .firma-box {
+            border: 1px solid #000;
+            padding: 20px;
+            margin-top: 10px;
+        }
+
+        .firma-row {
+            display: flex;
+            gap: 50px;
+        }
+
+        .firma-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .firma-line {
+            border-bottom: 1px solid #000;
+            height: 60px;
+            margin-bottom: 5px;
+        }
+
+        .firma-label {
+            font-size: 10px;
+            color: #444;
+        }
+
+        .estado-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border: 1px solid #000;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 10px;
+        }
+
+        .observaciones {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px dashed #000;
+            min-height: 40px;
+        }
+
+        /* ===== PRINT STYLES ===== */
+        @media print {
+            body {
+                padding: 0;
+                font-size: 11px;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+
+            .firma-section {
+                position: fixed;
+                bottom: 50px;
+                left: 20px;
+                right: 20px;
+            }
+
+            .items-table {
+                font-size: 10px;
+            }
+
+            .items-table th,
+            .items-table td {
+                padding: 4px;
+            }
+        }
+
+        /* Acciones en pantalla */
+        .actions {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .actions button,
+        .actions a {
+            padding: 10px 20px;
+            margin: 0 5px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .btn-print {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-download {
+            background: #16a34a;
+            color: white;
+            text-decoration: none;
+        }
+
+        @media print {
+            .actions {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Acciones (no se imprimen) -->
+    <div class="actions no-print">
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+        <a class="btn-download" href="/pedido/{{ pedido.id }}/descargar" target="_blank">📄 Descargar</a>
+    </div>
+
+    <div class="header">
+        <h1>📦 PEDIDO</h1>
+        <div class="pedido-num">#{{ pedido.id }}</div>
+        <div class="fecha">
+            Fecha: {{ pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M') if pedido.fecha_creacion else 'N/A' }}
+        </div>
+        <div class="estado-badge">{{ pedido.estado|upper }}</div>
+    </div>
+
+    <!-- Datos del Cliente -->
+    <div class="section">
+        <div class="section-title">📋 DATOS DEL CLIENTE</div>
+        <div class="row">
+            <span class="label">Nombre:</span>
+            <span class="value">{{ pedido.nombre }} {{ pedido.apellido }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Celular:</span>
+            <span class="value">{{ pedido.celular }}</span>
+        </div>
+        <div class="row full">
+            <span class="label">Dirección:</span>
+            <span class="value">{{ pedido.direccion }}</span>
+        </div>
+    </div>
+
+    <!-- Detalles de Entrega -->
+    <div class="section">
+        <div class="section-title">🚚 DETALLES DE ENTREGA</div>
+        <div class="row">
+            <span class="label">Fecha Entrega:</span>
+            <span class="value">{{ pedido.fecha_entrega.strftime('%d/%m/%Y') if pedido.fecha_entrega else 'N/A' }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Hora Acordada:</span>
+            <span class="value">{{ pedido.hora_entrega }}</span>
+        </div>
+    </div>
+
+    <!-- Detalle del Pedido -->
+    <div class="section">
+        <div class="section-title">📝 DETALLE DEL PEDIDO</div>
+        {% if pedido.items %}
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th class="text-right">Cantidad</th>
+                    <th class="text-right">Precio Unit.</th>
+                    <th class="text-right">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in pedido.items %}
+                <tr>
+                    <td>{{ item.descripcion }}</td>
+                    <td class="text-right">{{ item.cantidad|cantidad }}</td>
+                    <td class="text-right">{{ item.precio_unitario|pesos }}</td>
+                    <td class="text-right">{{ item.subtotal|pesos }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="detalle-box">{{ pedido.pedido_detalle }}</div>
+        {% endif %}
+    </div>
+
+    <!-- Total -->
+    {% if pedido.total and pedido.total > 0 %}
+    <div class="total-box">
+        <div>TOTAL A COBRAR:</div>
+        <div class="monto">{{ pedido.total|pesos }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Observaciones -->
+    <div class="observaciones">
+        <strong>Observaciones:</strong> _____________________________________________
+    </div>
+
+    <!-- Firma de Entrega -->
+    <div class="firma-section">
+        <div class="section-title">✍️ CONFIRMACIÓN DE ENTREGA</div>
+        <div class="firma-box">
+            <p style="font-size: 10px; margin-bottom: 15px;">
+                El repartidor debe presentar este comprobante al cliente y obtener su firma
+                como confirmación de la entrega realizada.
+            </p>
+            <div class="firma-row">
+                <div class="firma-item">
+                    <div class="firma-line"></div>
+                    <div class="firma-label">Firma del Cliente</div>
+                    <div class="firma-label">Aclaración: _________________</div>
+                    <div class="firma-label">DNI: _________________</div>
+                </div>
+                <div class="firma-item">
+                    <div class="firma-line"></div>
+                    <div class="firma-label">Firma del Repartidor</div>
+                    <div class="firma-label">Aclaración: _________________</div>
+                    <div class="firma-label">Fecha/Hora Entrega:</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-imprimir si viene con parametro ?print=1
+        if (window.location.search.includes('print=1')) {
+            window.onload = function() {
+                window.print();
+            };
+        }
+    </script>
+</body>
+</html>

@@ -36,8 +36,8 @@
                         <tr class="border-b">
                             <td class="px-2 py-1">{{ item.descripcion }}</td>
                             <td class="px-2 py-1 text-right">{{ item.cantidad }}</td>
-                            <td class="px-2 py-1 text-right">$ {{ "{:,.0f}".format(item.precio_unitario) }}</td>
-                            <td class="px-2 py-1 text-right">$ {{ "{:,.0f}".format(item.subtotal) }}</td>
+                            <td class="px-2 py-1 text-right">{{ item.precio_unitario|pesos }}</td>
+                            <td class="px-2 py-1 text-right">{{ item.subtotal|pesos }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -57,11 +57,16 @@
                         {{ pedido.estado }}
                     </span>
                 </div>
-                <div class="text-xl font-bold text-green-600">$ {{ "{:,.0f}".format(pedido.total) }}</div>
+                <div class="text-xl font-bold text-green-600">{{ pedido.total|pesos }}</div>
             </div>
 
             <!-- Acciones -->
             <div class="flex gap-3 pt-3 border-t mt-3">
+                <a href="/pedido/{{ pedido.id }}/imprimir"
+                   target="_blank"
+                   class="flex-1 text-center py-2 px-3 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors">
+                    🖨️ Imprimir
+                </a>
                 <a href="/editar-pedido/{{ pedido.id }}"
                    class="flex-1 text-center py-2 px-3 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors">
                     ✏️ Editar

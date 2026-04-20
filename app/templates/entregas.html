@@ -47,14 +47,21 @@
                         </div>
                     </div>
                     <div class="text-right ml-4">
-                        <div class="text-xl font-bold text-green-600">$ {{ "{:,.0f}".format(pedido.total) }}</div>
-                        <button hx-post="/api/pedido/{{ pedido.id }}/marcar-entregado"
-                                hx-target="#pedido-{{ pedido.id }}"
-                                hx-swap="outerHTML swap:0.5s"
-                                hx-confirm="¿Marcar pedido #{{ pedido.id }} como entregado?"
-                                class="mt-2 bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded transition-colors">
-                            ✅ Entregado
-                        </button>
+                        <div class="text-xl font-bold text-green-600">{{ pedido.total|pesos }}</div>
+                        <div class="flex gap-2 mt-2 justify-end">
+                            <a href="/pedido/{{ pedido.id }}/imprimir" target="_blank"
+                               class="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded transition-colors"
+                               title="Imprimir remito para el camionero">
+                                🖨️ Imprimir
+                            </a>
+                            <button hx-post="/api/pedido/{{ pedido.id }}/marcar-entregado"
+                                    hx-target="#pedido-{{ pedido.id }}"
+                                    hx-swap="outerHTML swap:0.5s"
+                                    hx-confirm="¿Marcar pedido #{{ pedido.id }} como entregado?"
+                                    class="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded transition-colors">
+                                ✅ Entregado
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -76,15 +83,15 @@
                             <tr class="border-b border-gray-100">
                                 <td class="py-1 font-medium">{{ item.descripcion }}</td>
                                 <td class="py-1 text-right">{{ item.cantidad }}</td>
-                                <td class="py-1 text-right">$ {{ "{:,.0f}".format(item.precio_unitario) }}</td>
-                                <td class="py-1 text-right">$ {{ "{:,.0f}".format(item.subtotal) }}</td>
+                                <td class="py-1 text-right">{{ item.precio_unitario|pesos }}</td>
+                                <td class="py-1 text-right">{{ item.subtotal|pesos }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                         <tfoot>
                             <tr class="font-bold">
                                 <td colspan="3" class="pt-2 text-right">Total:</td>
-                                <td class="pt-2 text-right text-green-600">$ {{ "{:,.0f}".format(pedido.total) }}</td>
+                                <td class="pt-2 text-right text-green-600">{{ pedido.total|pesos }}</td>
                             </tr>
                         </tfoot>
                     </table>

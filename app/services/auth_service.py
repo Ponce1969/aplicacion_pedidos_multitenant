@@ -16,7 +16,11 @@ from app.repositories import usuario_repo
 
 
 async def register_user(  # noqa: PLR0913 — registration needs multiple fields
-    db: AsyncSession, email: str, nombre: str, apellido: str, password: str,
+    db: AsyncSession,
+    email: str,
+    nombre: str,
+    apellido: str,
+    password: str,
     empresa_id: int,
 ) -> Usuario | str:
     """Registra un usuario nuevo. Devuelve el usuario o un string de error."""
@@ -35,7 +39,9 @@ async def register_user(  # noqa: PLR0913 — registration needs multiple fields
 
 
 async def authenticate_user(
-    db: AsyncSession, email: str, password: str,
+    db: AsyncSession,
+    email: str,
+    password: str,
 ) -> Usuario | None:
     """Autentica un usuario. Devuelve el usuario o None si falla."""
     # Buscar por email sin empresa_id (login no sabe la empresa aún)
@@ -52,16 +58,19 @@ async def authenticate_user(
     return user
 
 
-def build_auth_cookies(response: object, user_id: int) -> None:
+def build_auth_cookies(response: object, user_id: int, empresa_id: int) -> None:
     """Agrega cookies de access_token y refresh_token a la response."""
-    access_token = create_access_token(data={"sub": str(user_id)})
-    refresh_token = create_refresh_token(data={"sub": str(user_id)})
+    access_token = create_access_token(data={"sub": str(user_id), "empresa_id": empresa_id})
+    refresh_token = create_refresh_token(data={"sub": str(user_id), "empresa_id": empresa_id})
+
+    # En desarrollo (localhost sin HTTPS), secure=False para que las cookies funcionen
+    is_secure = settings.APP_ENV == "production"
 
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.APP_ENV == "production",
+        secure=is_secure,
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -69,7 +78,7 @@ def build_auth_cookies(response: object, user_id: int) -> None:
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=settings.APP_ENV == "production",
+        secure=is_secure,
         samesite="lax",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )

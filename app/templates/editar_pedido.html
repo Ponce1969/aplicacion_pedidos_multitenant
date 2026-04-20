@@ -80,15 +80,15 @@
                         <tr class="border-b border-gray-100">
                             <td class="py-1">{{ item.descripcion }}</td>
                             <td class="py-1 text-right">{{ item.cantidad }}</td>
-                            <td class="py-1 text-right">$ {{ "{:,.0f}".format(item.precio_unitario) }}</td>
-                            <td class="py-1 text-right">$ {{ "{:,.0f}".format(item.subtotal) }}</td>
+                            <td class="py-1 text-right">{{ item.precio_unitario|pesos }}</td>
+                            <td class="py-1 text-right">{{ item.subtotal|pesos }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                     <tfoot>
                         <tr class="font-bold">
                             <td colspan="3" class="pt-2 text-right">Total:</td>
-                            <td class="pt-2 text-right text-green-600">$ {{ "{:,.0f}".format(pedido.total) }}</td>
+                            <td class="pt-2 text-right text-green-600">{{ pedido.total|pesos }}</td>
                         </tr>
                     </tfoot>
                 </table>

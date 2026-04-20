@@ -23,12 +23,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/docs",
         "/openapi.json",
         "/redoc",
+        "/forgot-password",
+        "/reset-password",
     }
 
     PUBLIC_PREFIXES: ClassVar[set[str]] = {
         "/api/login",
         "/api/registro",
         "/api/refresh-token",
+        "/api/forgot-password",
+        "/api/reset-password",
         "/static",
     }
 

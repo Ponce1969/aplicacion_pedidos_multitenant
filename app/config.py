@@ -11,7 +11,6 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://barraca_user:password@db:5432/barraca",
         alias="DATABASE_URL",
     )
     DATABASE_POOL_SIZE: int = Field(default=20, alias="DATABASE_POOL_SIZE")

@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -11,9 +12,14 @@ from app.database import get_db
 from app.models import Pedido, Usuario
 from app.repositories import cliente_repo, producto_repo
 from app.services import pedido_service
+from app.templates_env import get_templates
+
+logger = logging.getLogger(__name__)
+
+VALID_ESTADOS = {"pendiente", "entregado", "cancelado"}
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+templates = get_templates()
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -30,7 +36,8 @@ async def nuevo_pedido_form(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     return templates.TemplateResponse(
-        request, "nuevo_pedido.html",
+        request,
+        "nuevo_pedido.html",
         {
             "user": current_user,
         },
@@ -45,7 +52,8 @@ async def pedidos_page(
 ) -> HTMLResponse:
     pedidos = await pedido_service.get_pedidos_mes(db, current_user.empresa_id)
     return templates.TemplateResponse(
-        request, "pedidos.html",
+        request,
+        "pedidos.html",
         {"user": current_user, "pedidos": pedidos},
     )
 
@@ -65,7 +73,8 @@ async def entregas_page(
     hoy = datetime.now(UTC).strftime("%Y-%m-%d")
 
     return templates.TemplateResponse(
-        request, "entregas.html",
+        request,
+        "entregas.html",
         {
             "user": current_user,
             "pedidos": pedidos,
@@ -89,8 +98,7 @@ async def marcar_entregado(
     pedido.estado = "entregado"
     await db.commit()
 
-    return HTMLResponse(content="", status_code=status.HTTP_200_OK,
-                        headers={"HX-Trigger": "pedidoEntregado"})
+    return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Trigger": "pedidoEntregado"})
 
 
 @router.delete("/api/pedido/{pedido_id}")
@@ -104,8 +112,14 @@ async def eliminar_pedido(
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
-    return HTMLResponse(content="", status_code=status.HTTP_200_OK,
-                        headers={"HX-Redirect": "/buscar"})
+    logger.info(
+        "Pedido #%s eliminado por usuario #%s (empresa %s)",
+        pedido_id,
+        current_user.id,
+        current_user.empresa_id,
+    )
+
+    return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Redirect": "/buscar"})
 
 
 @router.get("/editar-pedido/{pedido_id}", response_class=HTMLResponse)
@@ -120,7 +134,8 @@ async def editar_pedido_form(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     return templates.TemplateResponse(
-        request, "editar_pedido.html",
+        request,
+        "editar_pedido.html",
         {"user": current_user, "pedido": pedido},
     )
 
@@ -140,6 +155,12 @@ async def editar_pedido_guardar(  # noqa: PLR0913
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
+    if estado not in VALID_ESTADOS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Estado inválido. Valores permitidos: {', '.join(sorted(VALID_ESTADOS))}",
+        )
+
     fecha_dt: datetime | None = None
     if fecha_entrega:
         fecha_dt = datetime.strptime(fecha_entrega, "%Y-%m-%d").replace(tzinfo=UTC)
@@ -159,8 +180,17 @@ async def editar_pedido_guardar(  # noqa: PLR0913
     if pedido is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
+    logger.info(
+        "Pedido #%s actualizado por usuario #%s (empresa %s): estado=%s",
+        pedido.id,
+        current_user.id,
+        current_user.empresa_id,
+        estado,
+    )
+
     return templates.TemplateResponse(
-        request, "partials/success.html",
+        request,
+        "partials/success.html",
         {"mensaje": f"Pedido #{pedido.id} actualizado correctamente"},
     )
 
@@ -180,7 +210,9 @@ async def buscar_clientes(
 
     clientes = await cliente_repo.search(db, q, current_user.empresa_id)
     return templates.TemplateResponse(
-        request, "partials/clientes_resultado.html", {"clientes": clientes},
+        request,
+        "partials/clientes_resultado.html",
+        {"clientes": clientes},
     )
 
 
@@ -199,7 +231,9 @@ async def buscar_productos(
 
     productos = await producto_repo.search(db, q, current_user.empresa_id)
     return templates.TemplateResponse(
-        request, "partials/productos_resultado.html", {"productos": productos},
+        request,
+        "partials/productos_resultado.html",
+        {"productos": productos},
     )
 
 
@@ -265,7 +299,9 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
         saved = await pedido_service.crear_pedido(db, nuevo_pedido)
 
     return templates.TemplateResponse(
-        request, "partials/success.html", {"mensaje": f"✅ Pedido #{saved.id} guardado exitosamente"},
+        request,
+        "partials/success.html",
+        {"mensaje": f"✅ Pedido #{saved.id} guardado exitosamente"},
     )
 
 
@@ -275,7 +311,8 @@ async def buscar_form(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     return templates.TemplateResponse(
-        request, "buscar.html",
+        request,
+        "buscar.html",
         {
             "user": current_user,
         },
@@ -292,7 +329,9 @@ async def buscar_pedidos(
     pedidos = await pedido_service.buscar_pedidos(db, termino, current_user.empresa_id)
 
     return templates.TemplateResponse(
-        request, "partials/resultados_busqueda.html", {"pedidos": pedidos, "termino": termino},
+        request,
+        "partials/resultados_busqueda.html",
+        {"pedidos": pedidos, "termino": termino},
     )
 
 
@@ -309,5 +348,57 @@ async def ver_pedido(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     return templates.TemplateResponse(
-        request, "partials/detalle_pedido.html", {"pedido": pedido, "user": current_user},
+        request,
+        "partials/detalle_pedido.html",
+        {"pedido": pedido, "user": current_user},
     )
+
+
+@router.get("/pedido/{pedido_id}/imprimir")
+async def imprimir_pedido(
+    pedido_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Genera vista optimizada para imprimir el pedido.
+
+    El repartidor recibe este papel con los detalles de entrega.
+    Incluye espacio para firma de confirmación.
+    """
+    pedido = await pedido_service.get_pedido(db, pedido_id)
+
+    if pedido is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    return templates.TemplateResponse(
+        request,
+        "imprimir_pedido.html",
+        {"pedido": pedido, "user": current_user},
+    )
+
+
+@router.get("/pedido/{pedido_id}/descargar")
+async def descargar_pedido(
+    pedido_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Descarga el pedido como archivo HTML para imprimir."""
+    pedido = await pedido_service.get_pedido(db, pedido_id)
+
+    if pedido is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    response = templates.TemplateResponse(
+        request,
+        "imprimir_pedido.html",
+        {"pedido": pedido, "user": current_user},
+    )
+
+    filename = (
+        f"pedido-{pedido.id}-{pedido.fecha_creacion.strftime('%Y%m%d') if pedido.fecha_creacion else 'draft'}.html"
+    )
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return response

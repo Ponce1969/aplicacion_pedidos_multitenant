@@ -10,7 +10,7 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-lg font-semibold text-gray-700">Ventas Totales</h3>
-            <p class="text-3xl font-bold text-green-600">$ {{ "{:,.0f}".format(total_ventas) }}</p>
+            <p class="text-3xl font-bold text-green-600">{{ total_ventas|pesos }}</p>
         </div>
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-lg font-semibold text-gray-700">Pedidos Realizados</h3>
@@ -19,7 +19,7 @@
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-lg font-semibold text-gray-700">Ticket Promedio</h3>
             <p class="text-3xl font-bold text-purple-600">
-                $ {{ "{:,.0f}".format(total_ventas / cantidad_pedidos if cantidad_pedidos > 0 else 0) }}
+                {{ (total_ventas / cantidad_pedidos if cantidad_pedidos > 0 else 0)|pesos }}
             </p>
         </div>
     </div>
