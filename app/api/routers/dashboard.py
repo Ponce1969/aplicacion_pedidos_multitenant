@@ -24,6 +24,8 @@ async def dashboard(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
+    logger.info("Dashboard accessed by user_id=%s (empresa_id=%s)", current_user.id, current_user.empresa_id)
+
     hoy: date = datetime.now(UTC).date()
     pedidos_mes = await pedido_service.get_pedidos_mes(db, current_user.empresa_id)
 

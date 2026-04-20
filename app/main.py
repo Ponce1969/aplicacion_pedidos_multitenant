@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import secrets
 from contextlib import asynccontextmanager
@@ -17,6 +18,7 @@ from app.middlewares import AuthMiddleware
 from app.models import TokenBlacklist, Usuario
 from app.rate_limiter import RateLimitMiddleware
 from app.security_headers import SecurityHeadersMiddleware
+from app.csrf import CSRFMiddleware
 from app.csrf import CSRFMiddleware
 
 logging.basicConfig(
@@ -80,7 +82,28 @@ async def lifespan(app: FastAPI) -> None:
         break
 
     logger.info("Database initialized")
+
+    # Background task: cleanup de tokens expirados cada 6 horas
+    async def _cleanup_blacklist_periodically() -> None:
+        while True:
+            await asyncio.sleep(6 * 60 * 60)  # 6 horas
+            try:
+                async for db in get_db():
+                    result = await db.execute(
+                        delete(TokenBlacklist).where(TokenBlacklist.expiracion < text("NOW()")),
+                    )
+                    await db.commit()
+                    if result.rowcount > 0:
+                        logger.info("Auto-cleaned %d expired tokens from blacklist", result.rowcount)
+                    break
+            except Exception as exc:
+                logger.error("Blacklist cleanup failed: %s", exc)
+
+    cleanup_task = asyncio.create_task(_cleanup_blacklist_periodically())
+
     yield
+
+    cleanup_task.cancel()
     logger.info("Shutting down connections...")
 
 
