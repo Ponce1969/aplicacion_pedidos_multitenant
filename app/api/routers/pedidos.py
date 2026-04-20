@@ -344,7 +344,7 @@ async def ver_pedido(
 ) -> HTMLResponse:
     pedido = await pedido_service.get_pedido(db, pedido_id)
 
-    if pedido is None:
+    if pedido is None or pedido.empresa_id != current_user.empresa_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     return templates.TemplateResponse(
@@ -368,7 +368,7 @@ async def imprimir_pedido(
     """
     pedido = await pedido_service.get_pedido(db, pedido_id)
 
-    if pedido is None:
+    if pedido is None or pedido.empresa_id != current_user.empresa_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     return templates.TemplateResponse(
@@ -388,7 +388,7 @@ async def descargar_pedido(
     """Descarga el pedido como archivo HTML para imprimir."""
     pedido = await pedido_service.get_pedido(db, pedido_id)
 
-    if pedido is None:
+    if pedido is None or pedido.empresa_id != current_user.empresa_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     response = templates.TemplateResponse(
