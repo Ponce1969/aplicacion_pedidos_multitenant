@@ -30,6 +30,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
     PUBLIC_PREFIXES: ClassVar[set[str]] = {
         "/api/login",
         "/api/registro",
+        "/api/logout",
         "/api/refresh-token",
         "/api/forgot-password",
         "/api/reset-password",

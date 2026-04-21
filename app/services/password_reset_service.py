@@ -41,16 +41,19 @@ async def create_reset_token(db: AsyncSession, email: str) -> str | None:
 
 async def reset_password(db: AsyncSession, token: str, new_password: str) -> str | None:
     """Resetea la contraseña usando el token. Retorna error o None si OK."""
-    result = await db.execute(
-        select(PasswordResetToken).where(PasswordResetToken.token == token)
-    )
+    result = await db.execute(select(PasswordResetToken).where(PasswordResetToken.token == token))
     reset_token = result.scalar_one_or_none()
 
     if reset_token is None:
         return "Token inválido"
     if reset_token.usado:
         return "Token ya fue utilizado"
-    if reset_token.expiracion < datetime.now(UTC):
+    # Normalizar para compatibilidad SQLite (naive) vs PostgreSQL (aware)
+    now = datetime.now(UTC)
+    exp = reset_token.expiracion
+    if exp.tzinfo is None and now.tzinfo is not None:
+        now = now.replace(tzinfo=None)
+    if exp < now:
         return "Token expirado"
 
     # Obtener usuario

@@ -7,7 +7,8 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Routers
 from app.api.routers import admin, auth, dashboard, pedidos
@@ -90,7 +91,7 @@ async def lifespan(app: FastAPI) -> None:
             try:
                 async for db in get_db():
                     result = await db.execute(
-                        delete(TokenBlacklist).where(TokenBlacklist.expiracion < text("NOW()")),
+                        delete(TokenBlacklist).where(TokenBlacklist.expiracion < func.now()),
                     )
                     await db.commit()
                     if result.rowcount > 0:
@@ -154,18 +155,17 @@ async def health_check() -> JSONResponse:
 @app.post("/api/cleanup-blacklist")
 async def cleanup_blacklist(
     _current_user: Usuario = Depends(get_current_admin_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> JSONResponse:
     """Elimina tokens expirados de la blacklist.
 
     Debería ejecutarse periódicamente (cron o scheduler).
     Protegido: solo accesible para admins.
     """
-    async for db in get_db():
-        result = await db.execute(
-            delete(TokenBlacklist).where(TokenBlacklist.expiracion < text("NOW()")),
-        )
-        await db.commit()
-        deleted = result.rowcount
-        logger.info("Cleaned up %d expired tokens from blacklist", deleted)
-        return JSONResponse({"deleted": deleted})
-    return JSONResponse({"deleted": 0})
+    result = await db.execute(
+        delete(TokenBlacklist).where(TokenBlacklist.expiracion < func.now()),
+    )
+    await db.commit()
+    deleted = result.rowcount
+    logger.info("Cleaned up %d expired tokens from blacklist", deleted)
+    return JSONResponse({"deleted": deleted})
