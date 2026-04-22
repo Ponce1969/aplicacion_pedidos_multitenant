@@ -9,6 +9,8 @@ from jose import jwt
 # Forzar modo development para tests (CSRF off, cookies insecure)
 os.environ["APP_ENV"] = "development"
 os.environ["DEBUG"] = "true"
+# Forzar SQLite en memoria para evitar importar psycopg2
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 
 import pytest
 import pytest_asyncio

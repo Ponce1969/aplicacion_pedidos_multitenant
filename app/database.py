@@ -7,11 +7,17 @@ from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
 # Engine asíncrono — usa asyncpg como driver
+# Configuración de pool solo para PostgreSQL (SQLite no la soporta)
+_engine_kwargs: dict[str, object] = {"echo": settings.DEBUG}
+if settings.DATABASE_URL.startswith("postgresql"):
+    _engine_kwargs.update({
+        "pool_size": settings.DATABASE_POOL_SIZE,
+        "max_overflow": settings.DATABASE_MAX_OVERFLOW,
+    })
+
 engine = create_async_engine(
     str(settings.DATABASE_URL),
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    echo=settings.DEBUG,
+    **_engine_kwargs,
 )
 
 # Fábrica de sesiones asíncronas
