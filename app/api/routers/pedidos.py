@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import UTC, date, datetime
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -152,6 +153,7 @@ async def editar_pedido_guardar(  # noqa: PLR0913
     fecha_entrega: str = Form(""),
     pedido_detalle: str = Form(""),
     estado: str = Form("pendiente"),
+    senia: float = Form(0.0),
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
@@ -164,6 +166,23 @@ async def editar_pedido_guardar(  # noqa: PLR0913
     fecha_dt: datetime | None = None
     if fecha_entrega:
         fecha_dt = datetime.strptime(fecha_entrega, "%Y-%m-%d").replace(tzinfo=UTC)
+    
+    # Calcular estado de pago basado en seña vs total
+    senia_decimal = Decimal(str(senia)) if senia else Decimal("0")
+    
+    # Obtener el pedido actual para saber el total
+    pedido_actual = await pedido_service.get_pedido_by_id(db, pedido_id, current_user.empresa_id)
+    if pedido_actual is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+    
+    total_decimal = Decimal(str(pedido_actual.total)) if pedido_actual.total else Decimal("0")
+    
+    if senia_decimal >= total_decimal and total_decimal > 0:
+        estado_pago = "pagado"
+    elif senia_decimal > 0:
+        estado_pago = "parcial"
+    else:
+        estado_pago = "pendiente"
 
     datos = {
         "nombre": nombre,
@@ -174,6 +193,8 @@ async def editar_pedido_guardar(  # noqa: PLR0913
         "fecha_entrega": fecha_dt,
         "pedido_detalle": pedido_detalle,
         "estado": estado,
+        "senia": senia_decimal,
+        "estado_pago": estado_pago,
     }
 
     pedido = await pedido_service.update_pedido(db, pedido_id, current_user.empresa_id, datos)
@@ -181,11 +202,13 @@ async def editar_pedido_guardar(  # noqa: PLR0913
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     logger.info(
-        "Pedido #%s actualizado por usuario #%s (empresa %s): estado=%s",
+        "Pedido #%s actualizado por usuario #%s (empresa %s): estado=%s, estado_pago=%s, senia=%s",
         pedido.id,
         current_user.id,
         current_user.empresa_id,
         estado,
+        estado_pago,
+        senia_decimal,
     )
 
     return templates.TemplateResponse(
@@ -251,6 +274,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
     fecha_entrega: str = Form(""),
     pedido_detalle: str = Form(""),
     total: float = Form(0.0),
+    senia: float = Form(0.0),
     cliente_id: str = Form(""),
     items_json: str = Form("[]"),
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
@@ -263,6 +287,17 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
 
     # Resolver cliente_id
     cid: int | None = int(cliente_id) if cliente_id else None
+
+    # Calcular estado de pago basado en seña vs total
+    senia_decimal = Decimal(str(senia)) if senia else Decimal("0")
+    total_decimal = Decimal(str(total)) if total else Decimal("0")
+    
+    if senia_decimal >= total_decimal and total_decimal > 0:
+        estado_pago = "pagado"
+    elif senia_decimal > 0:
+        estado_pago = "parcial"
+    else:
+        estado_pago = "pendiente"
 
     # Si hay items JSON, usar el nuevo flujo
     items: list[dict[str, float | int | str]] = json.loads(items_json) if items_json else []
@@ -279,6 +314,8 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
             hora_entrega=hora_entrega,
             fecha_entrega=fecha_dt,
             pedido_detalle=pedido_detalle,
+            senia=senia_decimal,
+            estado_pago=estado_pago,
         )
         saved = await pedido_service.crear_pedido_con_items(db, nuevo_pedido, items)
     else:
@@ -295,6 +332,8 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
             fecha_entrega=fecha_dt,
             pedido_detalle=pedido_detalle,
             total=total,
+            senia=senia_decimal,
+            estado_pago=estado_pago,
         )
         saved = await pedido_service.crear_pedido(db, nuevo_pedido)
 

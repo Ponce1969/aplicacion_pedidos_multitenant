@@ -105,6 +105,36 @@
                 </table>
             </div>
 
+            <!-- Seña/Adelanto -->
+            <div class="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
+                <h4 class="text-lg font-semibold text-blue-800 mb-3">💰 Seña / Adelanto</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <div>
+                        <label for="senia" class="block text-sm font-medium text-blue-700">Monto de Seña ($)</label>
+                        <input id="senia" name="senia" type="number" step="0.01" min="0" value="0"
+                               class="mt-1 block w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
+                               placeholder="0"
+                               onchange="actualizarSaldo()">
+                    </div>
+                    <div class="text-center">
+                        <span class="text-sm text-gray-600">Saldo Pendiente:</span>
+                        <div id="saldo-display" class="text-2xl font-bold text-orange-600">$ 0</div>
+                    </div>
+                    <div class="text-center">
+                        <span class="text-sm text-gray-600">Estado:</span>
+                        <div id="estado-pago-display" class="text-lg font-semibold px-3 py-1 rounded-full inline-block mt-1 bg-gray-200 text-gray-700">
+                            Pendiente
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden inputs -->
+            <div style="display:none">
+                <table>
+                </table>
+            </div>
+
             <!-- Hidden input para items JSON -->
             <input type="hidden" id="items_json" name="items_json" value="[]">
         </fieldset>
@@ -257,6 +287,43 @@
         const detalle = pedidoItems.map(i => `${i.descripcion} - ${i.cantidad}`).join('\n');
         document.getElementById('pedido_detalle').value = detalle;
     }
+
+    // --- Seña / Saldo ---
+    function actualizarSaldo() {
+        const total = parseFloat(document.getElementById('total').value) || 0;
+        const senia = parseFloat(document.getElementById('senia').value) || 0;
+        const saldo = Math.max(0, total - senia);
+        
+        // Actualizar saldo display
+        document.getElementById('saldo-display').textContent = '$ ' + saldo.toLocaleString('es-PY', {minimumFractionDigits: 0});
+        
+        // Actualizar estado de pago
+        const estadoDisplay = document.getElementById('estado-pago-display');
+        if (senia >= total && total > 0) {
+            estadoDisplay.textContent = 'Pagado';
+            estadoDisplay.className = 'text-lg font-semibold px-3 py-1 rounded-full inline-block mt-1 bg-green-200 text-green-800';
+        } else if (senia > 0) {
+            estadoDisplay.textContent = 'Parcial';
+            estadoDisplay.className = 'text-lg font-semibold px-3 py-1 rounded-full inline-block mt-1 bg-yellow-200 text-yellow-800';
+        } else {
+            estadoDisplay.textContent = 'Pendiente';
+            estadoDisplay.className = 'text-lg font-semibold px-3 py-1 rounded-full inline-block mt-1 bg-gray-200 text-gray-700';
+        }
+        
+        // Validar que la seña no sea mayor al total
+        if (senia > total) {
+            document.getElementById('senia').classList.add('border-red-500', 'bg-red-50');
+        } else {
+            document.getElementById('senia').classList.remove('border-red-500', 'bg-red-50');
+        }
+    }
+
+    // Modificar renderItems para actualizar el saldo también
+    const originalRenderItems = renderItems;
+    renderItems = function() {
+        originalRenderItems();
+        actualizarSaldo();
+    };
 
     // Botón para agregar línea manual
     document.addEventListener('DOMContentLoaded', () => {

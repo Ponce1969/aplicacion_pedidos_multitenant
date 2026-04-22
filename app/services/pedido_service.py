@@ -46,6 +46,14 @@ async def get_pedido(db: AsyncSession, pedido_id: int) -> Pedido | None:
     return await pedido_repo.get_by_id(db, pedido_id)
 
 
+async def get_pedido_by_id(db: AsyncSession, pedido_id: int, empresa_id: int) -> Pedido | None:
+    """Obtiene un pedido por ID verificando que pertenezca a la empresa."""
+    pedido = await pedido_repo.get_by_id(db, pedido_id)
+    if pedido is None or pedido.empresa_id != empresa_id:
+        return None
+    return pedido
+
+
 def calcular_top_productos(pedidos: list[Pedido]) -> list[tuple[str, float]]:
     """Parsea pedido_detalle (legacy) para obtener productos más vendidos."""
     productos_vendidos: dict[str, float] = {}

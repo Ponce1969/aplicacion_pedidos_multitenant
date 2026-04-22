@@ -305,11 +305,43 @@
         {% endif %}
     </div>
 
-    <!-- Total -->
+    <!-- Seña y Pago -->
     {% if pedido.total and pedido.total > 0 %}
-    <div class="total-box">
-        <div>TOTAL A COBRAR:</div>
-        <div class="monto">{{ pedido.total|pesos }}</div>
+    <div class="section">
+        <div class="section-title">💰 PAGO</div>
+        <div class="row">
+            <span class="label">Total del Pedido:</span>
+            <span class="value" style="font-weight: bold;">{{ pedido.total|pesos }}</span>
+        </div>
+        {% if pedido.senia and pedido.senia > 0 %}
+        <div class="row">
+            <span class="label">Seña Pagada:</span>
+            <span class="value">{{ pedido.senia|pesos }}</span>
+        </div>
+        <div class="row" style="margin-top: 10px; padding-top: 10px; border-top: 2px dashed #000;">
+            <span class="label" style="font-size: 14px;">SALDO PENDIENTE:</span>
+            <span class="value" style="font-size: 18px; font-weight: bold; color: #d97706;">
+                {{ (pedido.total - pedido.senia)|pesos }}
+            </span>
+        </div>
+        {% else %}
+        <div class="row" style="margin-top: 10px;">
+            <span class="label" style="color: #666;">Seña:</span>
+            <span class="value" style="color: #666;">No se registró seña</span>
+        </div>
+        {% endif %}
+        <div class="row" style="margin-top: 10px;">
+            <span class="label">Estado de Pago:</span>
+            <span class="value">
+                {% if pedido.estado_pago == 'pagado' %}
+                    ✅ PAGADO COMPLETO
+                {% elif pedido.estado_pago == 'parcial' %}
+                    💰 PARCIAL (con seña)
+                {% else %}
+                    ⏳ PENDIENTE DE PAGO
+                {% endif %}
+            </span>
+        </div>
     </div>
     {% endif %}
 

@@ -124,6 +124,11 @@ class Pedido(Base):
     subtotal: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True, default=Decimal("0"))
     impuestos: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True, default=Decimal("0"))
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    
+    # Seña/Adelanto
+    senia: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True, default=Decimal("0"))
+    estado_pago: Mapped[str] = mapped_column(String(20), default="pendiente", server_default="pendiente")
+    
     estado: Mapped[str] = mapped_column(String(20), default="pendiente", server_default="pendiente")
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     fecha_entrega: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

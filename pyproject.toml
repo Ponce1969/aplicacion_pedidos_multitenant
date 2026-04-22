@@ -3,6 +3,7 @@ name = "barraca-pedidos"
 version = "1.0.0"
 description = "Sistema de pedidos para barraca/ferretería con autenticación segura"
 requires-python = ">=3.11"
+
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -20,30 +21,17 @@ dependencies = [
     "alembic>=1.13.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "httpx>=0.28.0",
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.24.0",
-    "pytest-cov>=6.0.0",
-    "mypy>=1.13.0",
-    "ruff>=0.8.0",
-    "types-python-jose>=3.3.4",
-    "types-passlib>=1.7.7",
-    "aiosqlite>=0.20.0",
-    "safety>=3.0.0",
-    "pip-audit>=2.7.0",
-]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# 👉 IMPORTANTE: incluir paquetes reales
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 
-[tool.uv]
-dev-dependencies = [
+# 👉 UV Dev Dependencies (grupo de desarrollo)
+[dependency-groups]
+dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "pytest>=9.0.3",
@@ -86,41 +74,11 @@ src = ["app", "tests"]
 
 [tool.ruff.lint]
 select = [
-    "E",      # pycodestyle errors
-    "W",      # pycodestyle warnings
-    "F",      # pyflakes
-    "I",      # isort
-    "N",      # pep8-naming
-    "UP",     # pyupgrade
-    "B",      # flake8-bugbear
-    "A",      # flake8-builtins
-    "COM",    # flake8-commas
-    "C4",     # flake8-comprehensions
-    "DTZ",    # flake8-datetimez
-    "EM",     # flake8-errmsg
-    "EXE",    # flake8-executable
-    "ISC",    # flake8-implicit-str-concat
-    "ICN",    # flake8-import-conventions
-    "G",      # flake8-logging-format
-    "PIE",    # flake8-pie
-    "PYI",    # flake8-pyi
-    "PT",     # flake8-pytest-style
-    "Q",      # flake8-quotes
-    "RSE",    # flake8-raise
-    "RET",    # flake8-return
-    "SIM",    # flake8-simplify
-    "TCH",    # flake8-type-checking
-    "INT",    # flake8-gettext
-    "ERA",    # eradicate (commented-out code)
-    "PGH",    # pygrep-hooks
-    "PL",     # pylint
-    "TRY",    # tryceratops
-    "RUF",    # ruff-specific
+    "E","W","F","I","N","UP","B","A","COM","C4","DTZ","EM","EXE",
+    "ISC","ICN","G","PIE","PYI","PT","Q","RSE","RET","SIM","TCH",
+    "INT","ERA","PGH","PL","TRY","RUF",
 ]
-ignore = [
-    "COM812",   # trailing comma (conflict with formatter)
-    "ISC001",   # implicit str concat (conflict with formatter)
-]
+ignore = ["COM812", "ISC001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
