@@ -1,19 +1,21 @@
-# docker-compose.prod.yml — Producción con HTTPS
+# docker-compose.prod.yml — Producción con Cloudflare Tunnel
 # USO: docker compose -f docker-compose.prod.yml up -d
-# REQUIERE: certificados SSL en ./certs/fullchain.pem y ./certs/privkey.pem
-# REQUIERE: archivo .env con SECRET_KEY, POSTGRES_PASSWORD, BASE_URL, etc.
+# Cloudflare Tunnel maneja HTTPS, no necesita certificados locales
+# Tunnel apunta a: http://orange-pi-ip:8010
 
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-barraca_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-barraca_prod_2024}
+      POSTGRES_DB: ${POSTGRES_DB:-barraca}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5445:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barraca_user} -d ${POSTGRES_DB:-barraca}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,7 +28,7 @@ services:
     expose:
       - "8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-barraca_user}:${POSTGRES_PASSWORD:-barraca_prod_2024}@db:5432/${POSTGRES_DB:-barraca}
       APP_ENV: production
       DEBUG: "false"
       SECRET_KEY: ${SECRET_KEY}
@@ -34,7 +36,7 @@ services:
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-20}
       DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-10}
-      BASE_URL: ${BASE_URL}
+      BASE_URL: https://pedidos-generales.loquinto.com
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
@@ -57,11 +59,9 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
-      - "443:443"
+      - "8010:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/nginx/certs:ro
     depends_on:
       app:
         condition: service_healthy
