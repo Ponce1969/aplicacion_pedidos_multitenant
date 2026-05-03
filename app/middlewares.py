@@ -20,9 +20,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/registro",
         "/static",
         "/health",
-        "/docs",
-        "/openapi.json",
-        "/redoc",
         "/forgot-password",
         "/reset-password",
     }
@@ -38,6 +35,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/static",
     }
 
+    PUBLIC_PATTERNS: ClassVar[list[tuple]] = [
+        ("/docs/", "/docs/"),
+        ("/redoc/", "/redoc/"),
+    ]
+
     async def dispatch(
         self,
         request: Request,
@@ -47,6 +49,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # Verificar si es ruta pública (exacta o por prefijo)
         is_public: bool = path in self.PUBLIC_PATHS or any(path.startswith(prefix) for prefix in self.PUBLIC_PREFIXES)
+
+        # Verificar patrones dinámicos (swagger con password)
+        if not is_public:
+            from app.config import settings
+            for swagger_prefix, _ in self.PUBLIC_PATTERNS:
+                if path.startswith(swagger_prefix):
+                    # /docs/PASSWORD, /redoc/PASSWORD, /openapi.json/PASSWORD
+                    password_part = path[len(swagger_prefix):].split("/")[0]
+                    if password_part == settings.SWAGGER_PASSWORD:
+                        is_public = True
+                        break
 
         if not is_public:
             # Buscar token en cookie o header
