@@ -3,6 +3,7 @@
 Este router NO requiere autenticación. Es la puerta de entrada para nuevos clientes.
 """
 
+import logging
 import re
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -16,6 +17,8 @@ from app.services import onboarding_service
 
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
+
+logger = logging.getLogger(__name__)
 
 
 class RegistroRequest(BaseModel):
@@ -142,6 +145,7 @@ async def registrar_empresa(
     except Exception as e:
         # Cualquier error inesperado hace rollback
         await db.rollback()
+        logger.error("Onboarding error: %s - %s", type(e).__name__, str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error interno: {str(e)}",

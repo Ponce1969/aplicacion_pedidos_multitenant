@@ -34,6 +34,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/api/refresh-token",
         "/api/forgot-password",
         "/api/reset-password",
+        "/api/onboarding",
         "/static",
     }
 
