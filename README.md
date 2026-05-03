@@ -124,9 +124,11 @@ La app queda disponible en `http://localhost:8000`
 curl -X POST http://localhost:8000/api/onboarding/register \
   -H "Content-Type: application/json" \
   -d '{
-    "empresa_nombre": "Mi Barraca",
+    "nombre_empresa": "Mi Barraca",
     "empresa_rut": "12345678-9",
-    "email": "admin@barraca.com",
+    "email_admin": "admin@barraca.com",
+    "nombre_admin": "Admin",
+    "apellido_admin": "Principal",
     "password": "TuPassword123!"
   }'
 ```
