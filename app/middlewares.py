@@ -35,15 +35,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/static",
     }
 
-    # These paths are protected by password in the URL itself (FastAPI docs_url config)
-    # No need for middleware auth - FastAPI handles the password check
-    # These are exact paths - but we also allow any /docs/PATH, /redoc/PATH, /openapi.json/PATH
-    UNPROTECTED_DOCS_PATHS: ClassVar[set[str]] = {
-        "/docs",
-        "/redoc",
-        "/openapi.json",
-    }
-
     async def dispatch(
         self,
         request: Request,
@@ -51,20 +42,30 @@ class AuthMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         path: str = request.url.path
 
-        # Allow all /docs/*, /redoc/*, /openapi.json/* paths through
-        # FastAPI handles the password check via docs_url/redoc_url/openapi_url
-        if path.startswith("/docs/") or path.startswith("/redoc/") or path.startswith("/openapi.json/"):
-            return await call_next(request)
+        # Allow swagger/redoc/openapi only if password in URL matches SWAGGER_PASSWORD env var
+        from app.config import settings
 
-        # Docs paths exactly (without password) - let FastAPI handle
-        if path in self.UNPROTECTED_DOCS_PATHS:
-            return await call_next(request)
+        if settings.SWAGGER_PASSWORD:
+            docs_url = f"/docs/{settings.SWAGGER_PASSWORD}"
+            redoc_url = f"/redoc/{settings.SWAGGER_PASSWORD}"
+            openapi_url = f"/openapi.json/{settings.SWAGGER_PASSWORD}"
+            if (
+                path == docs_url
+                or path == redoc_url
+                or path == openapi_url
+                or path.startswith(f"{docs_url}/")
+            ):
+                return await call_next(request)
+        else:
+            if path in {"/docs", "/redoc", "/openapi.json"}:
+                return await call_next(request)
 
         # Verificar si es ruta pública (exacta o por prefijo)
-        is_public: bool = path in self.PUBLIC_PATHS or any(path.startswith(prefix) for prefix in self.PUBLIC_PREFIXES)
+        is_public: bool = path in self.PUBLIC_PATHS or any(
+            path.startswith(prefix) for prefix in self.PUBLIC_PREFIXES
+        )
 
         if not is_public:
-            # Buscar token en cookie o header
             token: str | None = request.cookies.get("access_token")
             if not token:
                 auth_header: str | None = request.headers.get("Authorization")
@@ -72,9 +73,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     token = auth_header[7:]
 
             if not token:
-                # HTMX request → redirigir con HX-Redirect header
                 if request.headers.get("HX-Request") == "true":
-                    redirect_response = RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+                    redirect_response = RedirectResponse(
+                        url="/login", status_code=status.HTTP_302_FOUND
+                    )
                     redirect_response.headers["HX-Redirect"] = "/login"
                     return redirect_response
                 return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
