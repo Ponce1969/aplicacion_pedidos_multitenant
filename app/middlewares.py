@@ -42,11 +42,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         path: str = request.url.path
 
-        # Debug: log path and SWAGGER_PASSWORD
-        import logging
-        logger = logging.getLogger(__name__)
+        # Allow swagger/redoc/openapi only if password in URL matches SWAGGER_PASSWORD env var
         from app.config import settings
-        logger.warning(f"DEBUG path={path} SWAGGER_PASSWORD={settings.SWAGGER_PASSWORD}")
 
         if settings.SWAGGER_PASSWORD:
             if (
@@ -54,7 +51,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 or path.startswith(f"/openapi.json/{settings.SWAGGER_PASSWORD}")
                 or path.startswith(f"/redoc/{settings.SWAGGER_PASSWORD}")
             ):
-                logger.warning(f"DEBUG: allowing {path} - matches swagger password")
                 return await call_next(request)
         else:
             if path in {"/docs", "/redoc", "/openapi.json"}:
