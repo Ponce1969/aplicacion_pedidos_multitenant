@@ -15,7 +15,7 @@ from app.api.routers import admin, auth, dashboard, pedidos, onboarding, configu
 from app.auth import get_current_admin_user, get_password_hash
 from app.config import settings
 from app.database import get_db, init_db
-from app.middlewares import AuthMiddleware
+from app.dependencies import AuthRequiredException, require_auth
 from app.models import TokenBlacklist, Usuario
 from app.rate_limiter import RateLimitMiddleware
 from app.security_headers import SecurityHeadersMiddleware
@@ -115,7 +115,18 @@ app = FastAPI(
     docs_url=f"/docs/{settings.SWAGGER_PASSWORD}" if settings.SWAGGER_PASSWORD else None,
     redoc_url=f"/redoc/{settings.SWAGGER_PASSWORD}" if settings.SWAGGER_PASSWORD else None,
     openapi_url=f"/openapi.json/{settings.SWAGGER_PASSWORD}" if settings.SWAGGER_PASSWORD else None,
+    dependencies=[Depends(require_auth)],
 )
+
+
+@app.exception_handler(AuthRequiredException)
+async def auth_required_handler(request: Request, exc: AuthRequiredException) -> RedirectResponse:
+    """Handler para AuthRequiredException: redirige al login."""
+    if request.headers.get("HX-Request") == "true":
+        response = RedirectResponse(url="/login", status_code=302)
+        response.headers["HX-Redirect"] = "/login"
+        return response
+    return RedirectResponse(url="/login", status_code=302)
 
 # Middleware de rate limiting (primero, antes de auth)
 app.add_middleware(RateLimitMiddleware)
@@ -123,9 +134,6 @@ app.add_middleware(RateLimitMiddleware)
 # CSRF protection (solo en producción)
 if settings.APP_ENV == "production":
     app.add_middleware(CSRFMiddleware)
-
-# Middleware de autenticación
-app.add_middleware(AuthMiddleware)
 
 # Headers de seguridad HTTP
 app.add_middleware(SecurityHeadersMiddleware)
