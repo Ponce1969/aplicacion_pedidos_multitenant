@@ -1,6 +1,6 @@
 """003_add_unidad_medida
 
-Revision ID: 003_add_unidad_medida
+Revision ID: 003_unidad_medida
 Revises: 002_add_senia_and_estado_pago
 Create Date: 2026-05-02 12:00:00
 

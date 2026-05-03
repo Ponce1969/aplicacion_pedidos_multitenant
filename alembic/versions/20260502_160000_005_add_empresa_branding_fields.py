@@ -1,7 +1,7 @@
 """005_add_empresa_branding_fields
 
 Revision ID: 005_add_empresa_branding_fields
-Revises: 004_add_rol_repartidor_and_entrega_eventos
+Revises: 004_rol_and_entregas
 Create Date: 2026-05-02 16:00:00
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '005_add_empresa_branding_fields'
-down_revision: Union[str, Sequence[str], None] = '004_add_rol_repartidor_and_entrega_eventos'
+down_revision: Union[str, Sequence[str], None] = '004_rol_and_entregas'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

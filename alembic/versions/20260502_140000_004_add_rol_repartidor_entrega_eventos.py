@@ -1,6 +1,6 @@
-"""004_add_rol_repartidor_and_entrega_eventos
+"""004_add_rol_and_entregas
 
-Revision ID: 004_add_rol_repartidor_and_entrega_eventos
+Revision ID: 004_rol_and_entregas
 Revises: 003_add_unidad_medida
 Create Date: 2026-05-02 14:00:00
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy import func
 
 # revision identifiers, used by Alembic.
-revision: str = '004_add_rol_repartidor_and_entrega_eventos'
+revision: str = '004_rol_and_entregas'
 down_revision: Union[str, Sequence[str], None] = '003_add_unidad_medida'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,7 +28,6 @@ def upgrade() -> None:
     )
     
     # Migrar datos: is_admin=True → rol='admin'
-    op.execute("UPDATE usuarios SET rol = 'admin' WHERE is_admin = 1")
     op.execute("UPDATE usuarios SET rol = 'admin' WHERE is_admin = true")
     
     # Crear índice para búsquedas por rol
