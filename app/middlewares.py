@@ -35,10 +35,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/static",
     }
 
-    PUBLIC_PATTERNS: ClassVar[list[tuple]] = [
-        ("/docs/", "/docs/"),
-        ("/redoc/", "/redoc/"),
-    ]
+    # These paths are protected by password in the URL itself (FastAPI docs_url config)
+    # No need for middleware auth - FastAPI handles the password check
+    # These are exact paths - but we also allow any /docs/PATH, /redoc/PATH, /openapi.json/PATH
+    UNPROTECTED_DOCS_PATHS: ClassVar[set[str]] = {
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+    }
 
     async def dispatch(
         self,
@@ -47,19 +51,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         path: str = request.url.path
 
+        # Allow all /docs/*, /redoc/*, /openapi.json/* paths through
+        # FastAPI handles the password check via docs_url/redoc_url/openapi_url
+        if path.startswith("/docs/") or path.startswith("/redoc/") or path.startswith("/openapi.json/"):
+            return await call_next(request)
+
+        # Docs paths exactly (without password) - let FastAPI handle
+        if path in self.UNPROTECTED_DOCS_PATHS:
+            return await call_next(request)
+
         # Verificar si es ruta pública (exacta o por prefijo)
         is_public: bool = path in self.PUBLIC_PATHS or any(path.startswith(prefix) for prefix in self.PUBLIC_PREFIXES)
-
-        # Verificar patrones dinámicos (swagger con password)
-        if not is_public:
-            from app.config import settings
-            for swagger_prefix, _ in self.PUBLIC_PATTERNS:
-                if path.startswith(swagger_prefix):
-                    # /docs/PASSWORD, /redoc/PASSWORD, /openapi.json/PASSWORD
-                    password_part = path[len(swagger_prefix):].split("/")[0]
-                    if password_part == settings.SWAGGER_PASSWORD:
-                        is_public = True
-                        break
 
         if not is_public:
             # Buscar token en cookie o header
