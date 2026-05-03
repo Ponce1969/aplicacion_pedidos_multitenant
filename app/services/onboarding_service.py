@@ -4,10 +4,13 @@ Maneja la creación atómica de empresa + admin + cliente seed.
 Si algo falla en el camino, hace rollback completo.
 """
 
+import logging
 import re
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.auth import get_password_hash
 from app.models import Cliente, Empresa, Usuario
@@ -165,9 +168,18 @@ async def crear_empresa_y_admin(
     db.add(cliente_default)
 
     # Fase 5: Commit atómico
-    await db.commit()
+    logger.info("Intentando commit de onboarding...")
+    try:
+        await db.commit()
+        logger.info("Commit exitoso - empresa_id=%s", empresa.id)
+    except Exception as e:
+        logger.exception("Error en commit de onboarding: %s", str(e))
+        await db.rollback()
+        raise
+
     await db.refresh(empresa)
     await db.refresh(admin)
     await db.refresh(cliente_default)
 
+    logger.info("Onboarding completado: empresa=%s admin=%s", empresa.slug, admin.email)
     return empresa, admin, cliente_default

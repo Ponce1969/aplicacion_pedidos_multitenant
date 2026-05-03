@@ -105,6 +105,7 @@ async def registrar_empresa(
         )
 
     try:
+        logger.info("Iniciando onboarding para empresa: %s", registro.nombre_empresa)
         empresa, admin, cliente_default = await onboarding_service.crear_empresa_y_admin(
             db,
             nombre_empresa=registro.nombre_empresa,
@@ -113,6 +114,7 @@ async def registrar_empresa(
             apellido_admin=registro.apellido_admin,
             password=registro.password,
         )
+        logger.info("Onboarding exitoso - empresa_id=%s admin_id=%s", empresa.id, admin.id)
 
         return {
                 "empresa_id": empresa.id,
@@ -139,10 +141,12 @@ async def registrar_empresa(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El nombre de empresa no está disponible",
         )
+    except HTTPException:
+        raise
     except Exception as e:
         # Cualquier error inesperado hace rollback
         await db.rollback()
-        logger.error("Onboarding error: %s - %s", type(e).__name__, str(e))
+        logger.exception("Onboarding error inesperado: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error interno: {str(e)}",
