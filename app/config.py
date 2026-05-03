@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = Field(default="", alias="RESEND_API_KEY")
     RESEND_FROM_EMAIL: str = Field(default="onboarding@resend.dev", alias="RESEND_FROM_EMAIL")
 
+    # Swagger protection
+    SWAGGER_PASSWORD: str = Field(default="", alias="SWAGGER_PASSWORD")
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,

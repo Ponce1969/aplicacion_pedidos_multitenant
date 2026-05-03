@@ -112,6 +112,9 @@ app = FastAPI(
     title=settings.APP_NAME,
     debug=settings.DEBUG,
     lifespan=lifespan,
+    docs_url=f"/docs/{settings.SWAGGER_PASSWORD}" if settings.SWAGGER_PASSWORD else None,
+    redoc_url=f"/redoc/{settings.SWAGGER_PASSWORD}" if settings.SWAGGER_PASSWORD else None,
+    openapi_url=f"/openapi.json/{settings.SWAGGER_PASSWORD}" if settings.SWAGGER_PASSWORD else None,
 )
 
 # Middleware de rate limiting (primero, antes de auth)
