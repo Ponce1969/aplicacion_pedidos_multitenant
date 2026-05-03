@@ -80,7 +80,7 @@ async def registrar_empresa(
     request: Request,
     registro: RegistroRequest,
     db: AsyncSession = Depends(get_db),
-) -> JSONResponse:
+) -> dict:
     """Registra una nueva empresa con su admin y cliente default.
 
     Rate limited: 3 requests por IP cada 10 minutos.
@@ -114,9 +114,7 @@ async def registrar_empresa(
             password=registro.password,
         )
 
-        return JSONResponse(
-            status_code=status.HTTP_201_CREATED,
-            content={
+        return {
                 "empresa_id": empresa.id,
                 "empresa_nombre": empresa.nombre,
                 "empresa_slug": empresa.slug,
@@ -124,8 +122,7 @@ async def registrar_empresa(
                 "admin_email": admin.email,
                 "cliente_default_id": cliente_default.id,
                 "message": "Empresa registrada exitosamente",
-            },
-        )
+            }
 
     except onboarding_service.EmailYaRegistradoError:
         raise HTTPException(
