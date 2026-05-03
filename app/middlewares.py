@@ -2,11 +2,10 @@ from collections.abc import Callable
 from typing import ClassVar
 
 from fastapi import Request, status
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse, Response
 
 
-class AuthMiddleware(BaseHTTPMiddleware):
+class AuthMiddleware:
     """Middleware para proteger rutas automáticamente.
 
     Verifica la presencia de un token JWT en cookies o headers.
@@ -36,11 +35,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/static",
     }
 
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable[[Request], Callable[[], Response]],
-    ) -> Response:
+    def __init__(self, app: Callable) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope, receive=receive)
         path: str = request.url.path
 
         # Allow swagger/redoc/openapi only if password in URL matches SWAGGER_PASSWORD env var
@@ -52,10 +55,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 or path.startswith(f"/openapi.json/{settings.SWAGGER_PASSWORD}")
                 or path.startswith(f"/redoc/{settings.SWAGGER_PASSWORD}")
             ):
-                return await call_next(request)
+                await self.app(scope, receive, send)
+                return
         else:
             if path in {"/docs", "/redoc", "/openapi.json"}:
-                return await call_next(request)
+                await self.app(scope, receive, send)
+                return
 
         # Verificar si es ruta pública (exacta o por prefijo)
         is_public: bool = path in self.PUBLIC_PATHS or any(
@@ -71,12 +76,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
             if not token:
                 if request.headers.get("HX-Request") == "true":
-                    redirect_response = RedirectResponse(
+                    response = RedirectResponse(
                         url="/login", status_code=status.HTTP_302_FOUND
                     )
-                    redirect_response.headers["HX-Redirect"] = "/login"
-                    return redirect_response
-                return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+                    response.headers["HX-Redirect"] = "/login"
+                    await response(scope, receive, send)
+                    return
+                response = RedirectResponse(
+                    url="/login", status_code=status.HTTP_302_FOUND
+                )
+                await response(scope, receive, send)
+                return
 
-        response: Response = await call_next(request)
-        return response
+        await self.app(scope, receive, send)
