@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Pedido
 
 
-async def get_by_id(db: AsyncSession, pedido_id: int) -> Pedido | None:
-    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+async def get_by_id(db: AsyncSession, pedido_id: int, empresa_id: int) -> Pedido | None:
+    result = await db.execute(
+        select(Pedido).where(Pedido.id == pedido_id, Pedido.empresa_id == empresa_id)
+    )
     return result.scalar_one_or_none()
 
 
@@ -65,11 +67,30 @@ async def get_pending_by_empresa(
     return list(result.scalars().all())
 
 
-async def delete_pedido(db: AsyncSession, pedido_id: int) -> bool:
-    """Elimina un pedido por ID. Devuelve True si existía."""
-    pedido = await get_by_id(db, pedido_id)
+async def delete_pedido(db: AsyncSession, pedido_id: int, empresa_id: int) -> bool:
+    """Elimina un pedido por ID. Devuelve True si existía y pertenece a la empresa."""
+    pedido = await get_by_id(db, pedido_id, empresa_id)
     if pedido is None:
         return False
     await db.delete(pedido)
     await db.commit()
     return True
+
+
+async def get_asignados_by_repartidor(
+    db: AsyncSession,
+    repartidor_id: int,
+    empresa_id: int,
+) -> list[Pedido]:
+    """Obtiene pedidos asignados a un repartidor (no cancelados ni entregados)."""
+    query = (
+        select(Pedido)
+        .where(
+            Pedido.repartidor_id == repartidor_id,
+            Pedido.empresa_id == empresa_id,
+            Pedido.estado.notin_(["cancelado", "entregado"]),
+        )
+        .order_by(Pedido.fecha_entrega.asc().nulls_last(), Pedido.hora_entrega)
+    )
+    result = await db.execute(query)
+    return list(result.scalars().all())

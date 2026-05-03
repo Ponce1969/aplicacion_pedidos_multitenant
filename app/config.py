@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     PASSWORD_RESET_EXPIRE_MINUTES: int = Field(default=30, alias="PASSWORD_RESET_EXPIRE_MINUTES")
     BASE_URL: str = Field(default="http://localhost:8000", alias="BASE_URL")
 
+    # Email (Resend API)
+    RESEND_API_KEY: str = Field(default="", alias="RESEND_API_KEY")
+    RESEND_FROM_EMAIL: str = Field(default="onboarding@resend.dev", alias="RESEND_FROM_EMAIL")
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,

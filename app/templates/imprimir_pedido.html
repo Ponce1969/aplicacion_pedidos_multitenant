@@ -293,7 +293,7 @@
                 {% for item in pedido.items %}
                 <tr>
                     <td>{{ item.descripcion }}</td>
-                    <td class="text-right">{{ item.cantidad|cantidad }}</td>
+                    <td class="text-right">{{ item.cantidad|cantidad }} {{ item.producto.unidad_medida if item.producto and item.producto.unidad_medida else 'unidad' }}</td>
                     <td class="text-right">{{ item.precio_unitario|pesos }}</td>
                     <td class="text-right">{{ item.subtotal|pesos }}</td>
                 </tr>

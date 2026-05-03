@@ -1,0 +1,12 @@
+{% if direcciones %}
+<option value="">-- Seleccionar dirección --</option>
+{% for d in direcciones %}
+<option value="{{ d.direccion }}" {% if d.es_principal %}selected{% endif %}>
+    {{ d.descripcion }}: {{ d.direccion }}
+</option>
+{% endfor %}
+<option value="__nueva__">+ Agregar nueva dirección</option>
+{% else %}
+<option value="">-- Sin direcciones guardadas --</option>
+<option value="__nueva__">+ Agregar nueva dirección</option>
+{% endif %}

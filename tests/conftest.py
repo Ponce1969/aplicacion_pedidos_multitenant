@@ -28,10 +28,12 @@ from app.models import (
     PedidoItem,
     Producto,
     Cliente,
+    ClienteDireccion,
     PasswordResetToken,
     TokenBlacklist,
+    EntregaEvento,
 )
-from app.rate_limiter import login_limiter, register_limiter, forgot_password_limiter
+from app.rate_limiter import login_limiter, register_limiter, forgot_password_limiter, onboarding_limiter
 
 
 # Base de datos en memoria para tests (limpio entre sesiones)
@@ -62,6 +64,7 @@ async def reset_rate_limiters():
     login_limiter._requests.clear()
     register_limiter._requests.clear()
     forgot_password_limiter._requests.clear()
+    onboarding_limiter._requests.clear()
     yield
 
 
@@ -119,6 +122,7 @@ async def user_empresa_a(db_session, empresa_a):
         is_admin=True,
         is_active=True,
         empresa_id=empresa_a.id,
+        rol="admin",
     )
     db_session.add(user)
     await db_session.commit()
@@ -137,6 +141,7 @@ async def user_empresa_b(db_session, empresa_b):
         is_admin=True,
         is_active=True,
         empresa_id=empresa_b.id,
+        rol="admin",
     )
     db_session.add(user)
     await db_session.commit()
@@ -184,6 +189,44 @@ async def pedido_empresa_b(db_session, empresa_b, user_empresa_b):
     await db_session.commit()
     await db_session.refresh(pedido)
     return pedido
+
+
+@pytest_asyncio.fixture
+async def repartidor_empresa_a(db_session, empresa_a):
+    """Usuario repartidor de Empresa A."""
+    user = Usuario(
+        email="repartidor@empresa-a.com",
+        nombre="Repartidor",
+        apellido="EmpresaA",
+        password_hash=get_password_hash("Test123!"),
+        is_admin=False,
+        is_active=True,
+        empresa_id=empresa_a.id,
+        rol="repartidor",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def operador_empresa_a(db_session, empresa_a):
+    """Usuario operador de Empresa A (ni admin ni repartidor)."""
+    user = Usuario(
+        email="operador@empresa-a.com",
+        nombre="Operador",
+        apellido="EmpresaA",
+        password_hash=get_password_hash("Test123!"),
+        is_admin=False,
+        is_active=True,
+        empresa_id=empresa_a.id,
+        rol="operador",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
 
 
 @pytest_asyncio.fixture
@@ -273,13 +316,15 @@ async def expired_password_reset_token(db_session, user_empresa_a):
 
 @pytest_asyncio.fixture
 async def producto_empresa_a(db_session, empresa_a):
-    """Producto activo para Empresa A."""
+    """Producto activo para Empresa A (sin control de stock)."""
     producto = Producto(
         nombre="Cemento 25kg",
         sku="CEM-25",
         precio_base=Decimal("450.00"),
         empresa_id=empresa_a.id,
         is_active=True,
+        unidad_medida="bolsa",
+        stock=None,  # Sin control de stock
     )
     db_session.add(producto)
     await db_session.commit()
@@ -289,13 +334,15 @@ async def producto_empresa_a(db_session, empresa_a):
 
 @pytest_asyncio.fixture
 async def producto_empresa_b(db_session, empresa_b):
-    """Producto activo para Empresa B."""
+    """Producto activo para Empresa B (sin control de stock)."""
     producto = Producto(
         nombre="Madera pino 2x4",
         sku="MAD-2X4",
         precio_base=Decimal("350.00"),
         empresa_id=empresa_b.id,
         is_active=True,
+        unidad_medida="unidad",
+        stock=None,  # Sin control de stock
     )
     db_session.add(producto)
     await db_session.commit()

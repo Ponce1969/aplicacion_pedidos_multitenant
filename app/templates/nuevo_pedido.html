@@ -52,7 +52,16 @@
                            placeholder="+595991234567">
                 </div>
                 <div>
-                    <label for="direccion" class="block text-sm font-medium text-gray-700">Dirección de Entrega</label>
+                    <label class="block text-sm font-medium text-gray-700">Dirección de Entrega</label>
+                    <!-- Select de direcciones guardadas (HTMX) -->
+                    <div id="direcciones-container" class="mb-2" style="display: none;">
+                        <select id="direcciones-select"
+                                class="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                onchange="seleccionarDireccion(this.value)">
+                            <option value="">-- Seleccionar dirección guardada --</option>
+                        </select>
+                    </div>
+                    <!-- Input de dirección (siempre visible, editable) -->
                     <input id="direccion" name="direccion" type="text" required
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                            placeholder="Calle y número">
@@ -184,9 +193,50 @@
         document.getElementById('direccion').value = direccion;
         document.getElementById('clientes-dropdown').innerHTML = '';
         document.getElementById('cliente-search').value = nombre + ' ' + apellido;
+
+        // Cargar direcciones guardadas del cliente vía HTMX
+        cargarDirecciones(id);
     }
 
-    function agregarProducto(productoId, nombre, precio) {
+    function cargarDirecciones(clienteId) {
+        const container = document.getElementById('direcciones-container');
+        const select = document.getElementById('direcciones-select');
+
+        if (!clienteId) {
+            container.style.display = 'none';
+            return;
+        }
+
+        fetch(`/api/clientes/${clienteId}/direcciones`)
+            .then(response => response.text())
+            .then(html => {
+                select.innerHTML = html;
+                container.style.display = 'block';
+
+                // Si hay una dirección principal seleccionada, copiarla al input
+                const selected = select.options[select.selectedIndex];
+                if (selected && selected.value && selected.value !== '__nueva__') {
+                    document.getElementById('direccion').value = selected.value;
+                }
+            })
+            .catch(() => {
+                container.style.display = 'none';
+            });
+    }
+
+    function seleccionarDireccion(valor) {
+        const input = document.getElementById('direccion');
+        if (valor === '__nueva__') {
+            input.value = '';
+            input.focus();
+            input.placeholder = 'Ingresá la nueva dirección...';
+        } else if (valor) {
+            input.value = valor;
+            input.placeholder = 'Calle y número';
+        }
+    }
+
+    function agregarProducto(productoId, nombre, precio, unidad) {
         // Verificar si ya existe
         const existing = pedidoItems.find(i => i.productoId === productoId);
         if (existing) {
@@ -200,6 +250,7 @@
                 cantidad: 1,
                 precioUnitario: precio,
                 subtotal: precio,
+                unidad: unidad || 'unidad',
             });
         }
         renderItems();
@@ -215,6 +266,7 @@
             cantidad: 1,
             precioUnitario: 0,
             subtotal: 0,
+            unidad: 'unidad',
         });
         renderItems();
     }
@@ -249,9 +301,12 @@
                                placeholder="Descripción del producto" required>
                     </td>
                     <td class="px-2 py-2">
-                        <input type="number" value="${item.cantidad}" step="0.01" min="0.01"
-                               onchange="actualizarItem(${item.id}, 'cantidad', this.value)"
-                               class="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center">
+                        <div class="flex items-center gap-1">
+                            <input type="number" value="${item.cantidad}" step="0.01" min="0.01"
+                                   onchange="actualizarItem(${item.id}, 'cantidad', this.value)"
+                                   class="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center">
+                            <span class="text-xs text-gray-500">${item.unidad || 'unidad'}</span>
+                        </div>
                     </td>
                     <td class="px-2 py-2">
                         <input type="number" value="${item.precioUnitario}" step="0.01" min="0"

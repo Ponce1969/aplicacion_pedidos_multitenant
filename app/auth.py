@@ -187,6 +187,8 @@ async def get_current_admin_user(
 ) -> Usuario:
     """Verifica que el usuario autenticado sea administrador.
 
+    Acepta tanto el campo legacy is_admin como el nuevo campo rol='admin'.
+
     Args:
         current_user: Usuario obtenido por get_current_user.
 
@@ -196,7 +198,7 @@ async def get_current_admin_user(
     Raises:
         HTTPException 403: El usuario no es administrador.
     """
-    if not current_user.is_admin:
+    if not current_user.is_admin and current_user.rol != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Se requieren permisos de administrador",

@@ -1,11 +1,28 @@
+from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Producto
 
 
-async def get_by_id(db: AsyncSession, producto_id: int) -> Producto | None:
-    result = await db.execute(select(Producto).where(Producto.id == producto_id))
+class InsufficientStockError(Exception):
+    """Error cuando no hay stock suficiente para un producto."""
+
+    def __init__(self, producto_nombre: str, stock_disponible: Decimal, cantidad_solicitada: Decimal) -> None:
+        self.producto_nombre = producto_nombre
+        self.stock_disponible = stock_disponible
+        self.cantidad_solicitada = cantidad_solicitada
+        super().__init__(
+            f"Stock insuficiente para '{producto_nombre}': "
+            f"disponible {stock_disponible}, solicitado {cantidad_solicitada}"
+        )
+
+
+async def get_by_id(db: AsyncSession, producto_id: int, empresa_id: int) -> Producto | None:
+    result = await db.execute(
+        select(Producto).where(Producto.id == producto_id, Producto.empresa_id == empresa_id)
+    )
     return result.scalar_one_or_none()
 
 
@@ -40,3 +57,59 @@ async def create(db: AsyncSession, producto: Producto) -> Producto:
     await db.commit()
     await db.refresh(producto)
     return producto
+
+
+async def update_stock(
+    db: AsyncSession, producto_id: int, empresa_id: int, nuevo_stock: Decimal,
+) -> Producto | None:
+    """Actualiza el stock de un producto. Retorna el producto actualizado o None si no existe."""
+    producto = await get_by_id(db, producto_id, empresa_id)
+    if producto is None:
+        return None
+    producto.stock = nuevo_stock
+    await db.commit()
+    await db.refresh(producto)
+    return producto
+
+
+async def get_stock_bajo(db: AsyncSession, empresa_id: int) -> list[Producto]:
+    """Obtiene productos con stock por debajo del mínimo configurado.
+    
+    Un producto tiene stock bajo cuando:
+    - stock_minimo NO es None (tiene alerta configurada)
+    - stock NO es None (tiene control de stock)
+    - stock <= stock_minimo
+    """
+    query = (
+        select(Producto)
+        .where(
+            Producto.empresa_id == empresa_id,
+            Producto.is_active == True,  # noqa: E712
+            Producto.stock_minimo.isnot(None),
+            Producto.stock.isnot(None),
+            Producto.stock <= Producto.stock_minimo,
+        )
+        .order_by(Producto.stock.asc())
+    )
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
+async def count_stock_bajo(db: AsyncSession, empresa_id: int) -> int:
+    """Cuenta productos con stock bajo (para el badge del dashboard)."""
+    from sqlalchemy import func
+
+    query = (
+        select(func.count())
+        .select_from(Producto)
+        .where(
+            Producto.empresa_id == empresa_id,
+            Producto.is_active == True,  # noqa: E712
+            Producto.stock_minimo.isnot(None),
+            Producto.stock.isnot(None),
+            Producto.stock <= Producto.stock_minimo,
+        )
+    )
+    result = await db.execute(query)
+    count: int = result.scalar() or 0
+    return count

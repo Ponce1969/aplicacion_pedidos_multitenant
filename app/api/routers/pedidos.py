@@ -11,8 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import Pedido, Usuario
-from app.repositories import cliente_repo, producto_repo
+from app.repositories import cliente_repo, producto_repo, entrega_repo
+from app.repositories.producto_repo import InsufficientStockError
 from app.services import pedido_service
+from app.services.pedido_service import InvalidEstadoTransition
 from app.templates_env import get_templates
 
 logger = logging.getLogger(__name__)
@@ -92,14 +94,36 @@ async def marcar_entregado(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    pedido = await pedido_service.get_pedido(db, pedido_id)
-    if pedido is None or pedido.empresa_id != current_user.empresa_id:
+    pedido = await pedido_service.get_pedido_by_id(db, pedido_id, current_user.empresa_id)
+    if pedido is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     pedido.estado = "entregado"
     await db.commit()
 
     return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Trigger": "pedidoEntregado"})
+
+
+@router.post("/api/pedido/{pedido_id}/cancelar")
+async def cancelar_pedido(
+    pedido_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Cancela un pedido y restaura el stock de cada producto."""
+    pedido = await pedido_service.cancelar_pedido(db, pedido_id, current_user.empresa_id)
+    if pedido is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    logger.info(
+        "Pedido #%s cancelado por usuario #%s (empresa %s) — stock restaurado",
+        pedido_id,
+        current_user.id,
+        current_user.empresa_id,
+    )
+
+    return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Trigger": "pedidoCancelado"})
 
 
 @router.delete("/api/pedido/{pedido_id}")
@@ -130,8 +154,8 @@ async def editar_pedido_form(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    pedido = await pedido_service.get_pedido(db, pedido_id)
-    if pedido is None or pedido.empresa_id != current_user.empresa_id:
+    pedido = await pedido_service.get_pedido_by_id(db, pedido_id, current_user.empresa_id)
+    if pedido is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     return templates.TemplateResponse(
@@ -197,9 +221,15 @@ async def editar_pedido_guardar(  # noqa: PLR0913
         "estado_pago": estado_pago,
     }
 
-    pedido = await pedido_service.update_pedido(db, pedido_id, current_user.empresa_id, datos)
-    if pedido is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+    # Si se está cancelando el pedido, restaurar stock
+    if estado == "cancelado" and pedido_actual.estado != "cancelado":
+        pedido = await pedido_service.cancelar_pedido(db, pedido_id, current_user.empresa_id)
+        if pedido is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+    else:
+        pedido = await pedido_service.update_pedido(db, pedido_id, current_user.empresa_id, datos)
+        if pedido is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     logger.info(
         "Pedido #%s actualizado por usuario #%s (empresa %s): estado=%s, estado_pago=%s, senia=%s",
@@ -237,6 +267,99 @@ async def buscar_clientes(
         "partials/clientes_resultado.html",
         {"clientes": clientes},
     )
+
+
+@router.get("/api/clientes/{cliente_id}/direcciones")
+async def get_direcciones_cliente(
+    cliente_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """HTMX: Retorna las direcciones de un cliente como options para un select."""
+    direcciones = await cliente_repo.get_direcciones(db, cliente_id, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/direcciones_select.html",
+        {"direcciones": direcciones},
+    )
+
+
+# --- Cuenta Corriente: Registrar Pago ---
+
+
+@router.post("/api/clientes/{cliente_id}/registrar-pago")
+async def registrar_pago(
+    cliente_id: int,
+    request: Request,
+    monto: float = Form(...),
+    metodo_pago: str = Form("efectivo"),
+    nota: str = Form(""),
+    pedido_id: str = Form(""),
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Registra un pago de un cliente y reduce su saldo pendiente."""
+    from decimal import Decimal as D
+
+    if monto <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El monto debe ser mayor a 0",
+        )
+
+    pid = int(pedido_id) if pedido_id else None
+
+    try:
+        pago, cliente = await cliente_repo.registrar_pago(
+            db,
+            cliente_id=cliente_id,
+            empresa_id=current_user.empresa_id,
+            monto=D(str(monto)),
+            usuario_id=current_user.id,
+            pedido_id=pid,
+            metodo_pago=metodo_pago,
+            nota=nota or None,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+    logger.info(
+        "Pago $%s registrado para cliente #%s por usuario #%s (empresa %s)",
+        monto,
+        cliente_id,
+        current_user.id,
+        current_user.empresa_id,
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "partials/success.html",
+        {"mensaje": f"✅ Pago de ${monto:.0f} registrado. Saldo pendiente: ${float(cliente.saldo_pendiente):.0f}"},
+    )
+
+
+@router.get("/api/clientes/{cliente_id}/saldo")
+async def get_saldo_cliente(
+    cliente_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """HTMX: Retorna el saldo pendiente de un cliente."""
+    from fastapi.responses import JSONResponse
+
+    cliente = await cliente_repo.get_by_id(db, cliente_id)
+    if cliente is None or cliente.empresa_id != current_user.empresa_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+
+    return JSONResponse(content={
+        "saldo_pendiente": float(cliente.saldo_pendiente or 0),
+        "limite_credito": float(cliente.limite_credito) if cliente.limite_credito else None,
+    })
 
 
 # --- HTMX: Buscar productos (autocompletado) ---
@@ -317,7 +440,13 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
             senia=senia_decimal,
             estado_pago=estado_pago,
         )
-        saved = await pedido_service.crear_pedido_con_items(db, nuevo_pedido, items)
+        try:
+            saved = await pedido_service.crear_pedido_con_items(db, nuevo_pedido, items)
+        except InsufficientStockError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(e),
+            ) from e
     else:
         # Flujo legacy (sin items)
         nuevo_pedido = Pedido(
@@ -381,9 +510,9 @@ async def ver_pedido(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    pedido = await pedido_service.get_pedido(db, pedido_id)
+    pedido = await pedido_service.get_pedido_by_id(db, pedido_id, current_user.empresa_id)
 
-    if pedido is None or pedido.empresa_id != current_user.empresa_id:
+    if pedido is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     return templates.TemplateResponse(
@@ -405,9 +534,9 @@ async def imprimir_pedido(
     El repartidor recibe este papel con los detalles de entrega.
     Incluye espacio para firma de confirmación.
     """
-    pedido = await pedido_service.get_pedido(db, pedido_id)
+    pedido = await pedido_service.get_pedido_by_id(db, pedido_id, current_user.empresa_id)
 
-    if pedido is None or pedido.empresa_id != current_user.empresa_id:
+    if pedido is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     return templates.TemplateResponse(
@@ -425,9 +554,9 @@ async def descargar_pedido(
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     """Descarga el pedido como archivo HTML para imprimir."""
-    pedido = await pedido_service.get_pedido(db, pedido_id)
+    pedido = await pedido_service.get_pedido_by_id(db, pedido_id, current_user.empresa_id)
 
-    if pedido is None or pedido.empresa_id != current_user.empresa_id:
+    if pedido is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
     response = templates.TemplateResponse(
@@ -441,3 +570,128 @@ async def descargar_pedido(
     )
     response.headers["Content-Disposition"] = f"attachment; filename={filename}"
     return response
+
+
+# ==================== M-02: REPARTIDORES ====================
+
+
+@router.get("/mis-entregas", response_class=HTMLResponse)
+async def mis_entregas(
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Vista del repartidor: pedidos asignados del día."""
+    pedidos = await pedido_service.get_pedidos_asignados_repartidor(
+        db, current_user.id, current_user.empresa_id
+    )
+    return templates.TemplateResponse(
+        request,
+        "entregas.html",
+        {
+            "user": current_user,
+            "pedidos": pedidos,
+            "fecha": datetime.now(UTC).strftime("%Y-%m-%d"),
+            "hoy": datetime.now(UTC).strftime("%Y-%m-%d"),
+            "es_repartidor": True,
+        },
+    )
+
+
+@router.post("/api/pedido/{pedido_id}/asignar-repartidor")
+async def asignar_repartidor(
+    pedido_id: int,
+    request: Request,
+    repartidor_id: int = Form(...),
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Admin asigna un repartidor a un pedido."""
+    # Verificar que el repartidor exista y sea de la misma empresa
+    from app.repositories import usuario_repo
+
+    repartidor = await usuario_repo.get_by_id(db, repartidor_id, current_user.empresa_id)
+    if repartidor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repartidor no encontrado")
+
+    if repartidor.rol not in ("repartidor", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El usuario asignado debe tener rol 'repartidor' o 'admin'",
+        )
+
+    pedido = await pedido_service.asignar_repartidor(
+        db, pedido_id, repartidor_id, current_user.id, current_user.empresa_id
+    )
+    if pedido is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    logger.info(
+        "Repartidor #%s asignado a pedido #%s por usuario #%s",
+        repartidor_id,
+        pedido_id,
+        current_user.id,
+    )
+
+    return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Trigger": "repartidorAsignado"})
+
+
+@router.post("/api/pedido/{pedido_id}/cambiar-estado")
+async def cambiar_estado_pedido(
+    pedido_id: int,
+    request: Request,
+    nuevo_estado: str = Form(...),
+    nota: str = Form(""),
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Cambia el estado de un pedido con validación de transiciones."""
+    try:
+        pedido = await pedido_service.cambiar_estado_entrega(
+            db, pedido_id, nuevo_estado, current_user.id, current_user.empresa_id, nota or None
+        )
+    except InvalidEstadoTransition as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
+
+    logger.info(
+        "Pedido #%s: estado cambiado a '%s' por usuario #%s",
+        pedido_id,
+        nuevo_estado,
+        current_user.id,
+    )
+
+    return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Trigger": "estadoCambiado"})
+
+
+@router.get("/api/pedido/{pedido_id}/historial")
+async def historial_pedido(
+    pedido_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Obtiene el historial de eventos de un pedido."""
+    pedido = await pedido_service.get_pedido_by_id(db, pedido_id, current_user.empresa_id)
+    if pedido is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    eventos = await entrega_repo.get_by_pedido(db, pedido_id)
+
+    # Retornar JSON para API
+    from fastapi.responses import JSONResponse
+
+    eventos_data = [
+        {
+            "id": e.id,
+            "estado_anterior": e.estado_anterior,
+            "estado_nuevo": e.estado_nuevo,
+            "nota": e.nota,
+            "usuario_id": e.usuario_id,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in eventos
+    ]
+    return JSONResponse(content=eventos_data)

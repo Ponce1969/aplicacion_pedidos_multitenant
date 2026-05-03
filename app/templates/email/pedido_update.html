@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tu pedido #{{ pedido_id }}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td align="center" style="padding: 20px 0;">
+                <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <!-- Header con color de empresa -->
+                    <tr>
+                        <td style="border-top: 4px solid {{ empresa_color }}; padding: 30px 40px 20px;">
+                            {% if empresa_logo %}
+                                <img src="{{ empresa_logo }}" alt="{{ empresa_nombre }}" style="max-width: 200px; height: auto; display: block;">
+                            {% else %}
+                                <h1 style="margin: 0; color: {{ empresa_color }}; font-size: 24px;">{{ empresa_nombre }}</h1>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding: 0 40px 30px;">
+                            <p style="font-size: 16px; color: #333333; line-height: 1.6;">
+                                Hola <strong>{{ cliente_nombre }}</strong>,
+                            </p>
+                            
+                            <p style="font-size: 16px; color: #333333; line-height: 1.6;">
+                                Tu pedido <strong style="color: {{ empresa_color }};">#{{ pedido_id }}</strong> 
+                                ahora está: <strong style="color: {{ empresa_color }};">{{ pedido_estado }}</strong>.
+                            </p>
+                            
+                            {% if fecha_entrega %}
+                            <p style="font-size: 14px; color: #666666;">
+                                Fecha estimada de entrega: {{ fecha_entrega }} {% if hora_entrega %}a las {{ hora_entrega }}{% endif %}
+                            </p>
+                            {% endif %}
+                            
+                            <!-- Tabla de items -->
+                            {% if items %}
+                            <table width="100%" cellpadding="8" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background-color: {{ empresa_color }}; color: #ffffff;">
+                                        <th align="left" style="padding: 10px; font-size: 14px;">Cant.</th>
+                                        <th align="left" style="padding: 10px; font-size: 14px;">Producto</th>
+                                        <th align="right" style="padding: 10px; font-size: 14px;">Precio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in items %}
+                                    <tr style="border-bottom: 1px solid #eeeeee;">
+                                        <td style="padding: 10px; font-size: 14px;">{{ item.cantidad }}</td>
+                                        <td style="padding: 10px; font-size: 14px;">{{ item.descripcion }}</td>
+                                        <td align="right" style="padding: 10px; font-size: 14px;">${{ "%.0f"|format(item.precio_unitario) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% endif %}
+                            
+                            <!-- Totales -->
+                            {% if pedido_total is not none %}
+                            <table width="100%" cellpadding="8" cellspacing="0" border="0" style="margin-top: 10px;">
+                                <tr>
+                                    <td align="right" style="font-size: 14px; color: #666666;">Total:</td>
+                                    <td align="right" style="font-size: 16px; font-weight: bold; color: #333333; width: 120px;">${{ "%.0f"|format(pedido_total) }}</td>
+                                </tr>
+                                {% if pedido_senia and pedido_senia > 0 %}
+                                <tr>
+                                    <td align="right" style="font-size: 14px; color: #666666;">Seña pagada:</td>
+                                    <td align="right" style="font-size: 14px; color: #16a34a; width: 120px;">-${{ "%.0f"|format(pedido_senia) }}</td>
+                                </tr>
+                                <tr>
+                                    <td align="right" style="font-size: 14px; color: #666666;">Saldo pendiente:</td>
+                                    <td align="right" style="font-size: 16px; font-weight: bold; color: #d97706; width: 120px;">${{ "%.0f"|format(pedido_saldo or (pedido_total - pedido_senia)) }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 20px 40px; background-color: #f9fafb; border-top: 1px solid #eeeeee;">
+                            <p style="margin: 0; font-size: 12px; color: #666666; text-align: center;">
+                                {{ empresa_nombre }}<br>
+                                {% if email_contacto %}Email: {{ email_contacto }}<br>{% endif %}
+                                {% if telefono_contacto %}Tel: {{ telefono_contacto }}{% endif %}
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

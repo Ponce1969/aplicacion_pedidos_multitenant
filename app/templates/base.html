@@ -8,6 +8,25 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/style.css">
     <script>
+        // Cargar configuración de empresa para CSS dinámico
+        // Se ejecuta antes de renderizar para evitar FOUC
+        (function() {
+            fetch('/admin/configuracion/api/config')
+                .then(r => r.ok ? r.json() : null)
+                .then(config => {
+                    if (config && config.color_primario) {
+                        const root = document.documentElement;
+                        root.style.setProperty('--empresa-color', config.color_primario);
+                        // Actualizar navbar
+                        const nav = document.querySelector('nav');
+                        if (nav) {
+                            nav.style.backgroundColor = config.color_primario;
+                        }
+                    }
+                })
+                .catch(() => {}); // Silencioso: si falla, usa defaults
+        })();
+
         // Auto-refresh token cada 50 minutos
         setInterval(() => {
             fetch('/api/refresh-token', { method: 'POST' });
@@ -35,11 +54,19 @@
     </script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+    <!-- CSS Variables para thema dinámico -->
+    <style>
+        :root {
+            --empresa-color: #3b82f6;
+            --empresa-color-hover: #2563eb;
+        }
+    </style>
+
     <!-- Loading indicator -->
-    <div id="loading" class="hidden fixed top-0 left-0 w-full h-1 bg-blue-500 animate-pulse z-50"></div>
+    <div id="loading" class="hidden fixed top-0 left-0 w-full h-1 animate-pulse z-50" style="background-color: var(--empresa-color);"></div>
 
     <!-- Navigation -->
-    <nav class="bg-blue-600 text-white p-4 shadow-lg">
+    <nav class="text-white p-4 shadow-lg" style="background-color: var(--empresa-color);">
         <div class="container mx-auto flex justify-between items-center">
             <div class="flex gap-4 items-center">
                 <a href="/pedidos" class="text-xl font-bold hover:underline">🏠 Pedidos</a>
@@ -49,12 +76,13 @@
                 <a href="/dashboard" class="hover:underline">📊 Dashboard</a>
                 {% if user and user.is_admin %}
                 <a href="/admin/usuarios" class="hover:underline">👥 Usuarios</a>
+                <a href="/admin/configuracion" class="hover:underline">⚙️</a>
                 {% endif %}
             </div>
             <div class="flex gap-4 items-center">
                 <span class="text-sm">👋 {{ user.nombre if user else 'Invitado' }}</span>
                 <form hx-post="/api/logout" hx-swap="none" class="inline">
-                    <button type="submit" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600 text-sm">
+                    <button type="submit" class="px-3 py-1 rounded text-sm font-medium hover:opacity-80 transition-opacity" style="background-color: rgba(255,255,255,0.25);">
                         Cerrar Sesión
                     </button>
                 </form>

@@ -125,6 +125,7 @@ class TestCleanupBlacklist:
     async def test_cleanup_blacklist_no_admin_retorna_403(self, client, user_empresa_a, db_session):
         """Usuario no-admin no puede ejecutar cleanup."""
         user_empresa_a.is_admin = False
+        user_empresa_a.rol = "operador"
         await db_session.commit()
 
         await client.post(
@@ -141,6 +142,7 @@ class TestCleanupBlacklist:
 
         # Reactivar admin
         user_empresa_a.is_admin = True
+        user_empresa_a.rol = "admin"
         await db_session.commit()
 
     async def test_cleanup_blacklist_sin_auth_redirige(self, client):

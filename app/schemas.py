@@ -1,6 +1,10 @@
 from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+# Unidades de medida válidas para productos
+UNIDADES_MEDIDA = ("unidad", "kg", "litro", "bolsa", "metro", "caja", "par", "docena")
 
 
 # Auth Schemas
@@ -67,3 +71,34 @@ class PedidoResponse(PedidoBase):
     estado: str
 
     model_config = {"from_attributes": True}
+
+
+# Email Schemas
+class EmailTemplateData(BaseModel):
+    """Datos requeridos para renderizar cualquier email de notificación."""
+
+    # Datos de la empresa (tenant)
+    empresa_nombre: str = Field(..., min_length=1)
+    empresa_logo: str | None = None
+    empresa_color: str = Field(default="#3b82f6", pattern=r"^#[0-9A-Fa-f]{6}$")
+    email_contacto: str | None = None
+    telefono_contacto: str | None = None
+
+    # Datos del cliente
+    cliente_nombre: str = Field(..., min_length=1)
+    cliente_email: str = Field(..., pattern=r"^[^@]+@[^@]+\.[^@]+$")
+
+    # Datos del pedido
+    pedido_id: int
+    pedido_estado: str
+    pedido_total: float | None = None
+    pedido_senia: float | None = None
+    pedido_saldo: float | None = None
+
+    # Items del pedido (para tabla de detalle)
+    items: list[dict[str, Any]] = Field(default_factory=list)
+    # Estructura de cada item: {"cantidad": float, "descripcion": str, "precio_unitario": float}
+
+    # Metadata
+    fecha_entrega: str | None = None
+    hora_entrega: str | None = None

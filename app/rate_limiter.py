@@ -54,11 +54,13 @@ class RateLimiter:
 login_limiter = RateLimiter(max_requests=5, window_seconds=60)
 register_limiter = RateLimiter(max_requests=3, window_seconds=300)
 forgot_password_limiter = RateLimiter(max_requests=3, window_seconds=300)
+onboarding_limiter = RateLimiter(max_requests=3, window_seconds=600)  # 3 registros cada 10 min
 
 PATH_LIMITERS: dict[str, RateLimiter] = {
     "/api/login": login_limiter,
     "/api/registro": register_limiter,
     "/api/forgot-password": forgot_password_limiter,
+    "/api/onboarding/register": onboarding_limiter,
 }
 
 

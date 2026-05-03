@@ -11,8 +11,16 @@ async def get_by_email(db: AsyncSession, email: str, empresa_id: int) -> Usuario
     return result.scalar_one_or_none()
 
 
-async def get_by_id(db: AsyncSession, user_id: int) -> Usuario | None:
-    result = await db.execute(select(Usuario).where(Usuario.id == user_id))
+async def get_by_email_global(db: AsyncSession, email: str) -> Usuario | None:
+    """Busca un usuario por email sin filtrar por empresa (para onboarding)."""
+    result = await db.execute(select(Usuario).where(Usuario.email == email))
+    return result.scalar_one_or_none()
+
+
+async def get_by_id(db: AsyncSession, user_id: int, empresa_id: int) -> Usuario | None:
+    result = await db.execute(
+        select(Usuario).where(Usuario.id == user_id, Usuario.empresa_id == empresa_id)
+    )
     return result.scalar_one_or_none()
 
 

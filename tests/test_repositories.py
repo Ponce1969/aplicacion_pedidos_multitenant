@@ -112,18 +112,23 @@ async def pedido_cancelado(db_session, empresa_a, user_empresa_a):
 class TestPedidoRepo:
     """Tests para pedido_repo."""
 
-    async def test_get_by_id_existente(self, db_session, pedido_empresa_a):
-        """get_by_id debe retornar el pedido si existe."""
-        result = await pedido_repo.get_by_id(db_session, pedido_empresa_a.id)
+    async def test_get_by_id_existente(self, db_session, pedido_empresa_a, empresa_a):
+        """get_by_id debe retornar el pedido si existe y pertenece a la empresa."""
+        result = await pedido_repo.get_by_id(db_session, pedido_empresa_a.id, empresa_a.id)
 
         assert result is not None
         assert result.id == pedido_empresa_a.id
         assert result.nombre == "Cliente"
 
-    async def test_get_by_id_no_existente(self, db_session):
+    async def test_get_by_id_no_existente(self, db_session, empresa_a):
         """get_by_id debe retornar None si no existe."""
-        result = await pedido_repo.get_by_id(db_session, 99999)
+        result = await pedido_repo.get_by_id(db_session, 99999, empresa_a.id)
 
+        assert result is None
+
+    async def test_get_by_id_empresa_erronea(self, db_session, pedido_empresa_a, empresa_b):
+        """get_by_id debe retornar None si la empresa no coincide."""
+        result = await pedido_repo.get_by_id(db_session, pedido_empresa_a.id, empresa_b.id)
         assert result is None
 
     async def test_create(self, db_session, empresa_a, user_empresa_a):
@@ -262,21 +267,26 @@ class TestPedidoRepo:
 
         assert not any(p.estado == "cancelado" for p in result)
 
-    async def test_delete_pedido_existente(self, db_session, pedido_empresa_a):
+    async def test_delete_pedido_existente(self, db_session, pedido_empresa_a, empresa_a):
         """delete_pedido debe eliminar y retornar True."""
         result = await pedido_repo.delete_pedido(
-            db_session, pedido_empresa_a.id,
+            db_session, pedido_empresa_a.id, empresa_a.id,
         )
 
         assert result is True
         # Verificar que no existe más
-        deleted = await pedido_repo.get_by_id(db_session, pedido_empresa_a.id)
+        deleted = await pedido_repo.get_by_id(db_session, pedido_empresa_a.id, empresa_a.id)
         assert deleted is None
 
-    async def test_delete_pedido_no_existente(self, db_session):
+    async def test_delete_pedido_no_existente(self, db_session, empresa_a):
         """delete_pedido debe retornar False si no existe."""
-        result = await pedido_repo.delete_pedido(db_session, 99999)
+        result = await pedido_repo.delete_pedido(db_session, 99999, empresa_a.id)
 
+        assert result is False
+
+    async def test_delete_pedido_empresa_erronea(self, db_session, pedido_empresa_a, empresa_b):
+        """delete_pedido debe retornar False si la empresa no coincide."""
+        result = await pedido_repo.delete_pedido(db_session, pedido_empresa_a.id, empresa_b.id)
         assert result is False
 
 
@@ -287,18 +297,23 @@ class TestPedidoRepo:
 class TestProductoRepo:
     """Tests para producto_repo."""
 
-    async def test_get_by_id_existente(self, db_session, producto_empresa_a):
-        """get_by_id debe retornar el producto."""
-        result = await producto_repo.get_by_id(db_session, producto_empresa_a.id)
+    async def test_get_by_id_existente(self, db_session, producto_empresa_a, empresa_a):
+        """get_by_id debe retornar el producto si existe y pertenece a la empresa."""
+        result = await producto_repo.get_by_id(db_session, producto_empresa_a.id, empresa_a.id)
 
         assert result is not None
         assert result.nombre == "Cemento 25kg"
         assert result.sku == "CEM-25"
 
-    async def test_get_by_id_no_existente(self, db_session):
-        """get_by_id debe retornar None."""
-        result = await producto_repo.get_by_id(db_session, 99999)
+    async def test_get_by_id_no_existente(self, db_session, empresa_a):
+        """get_by_id debe retornar None si no existe."""
+        result = await producto_repo.get_by_id(db_session, 99999, empresa_a.id)
 
+        assert result is None
+
+    async def test_get_by_id_empresa_erronea(self, db_session, producto_empresa_a, empresa_b):
+        """get_by_id debe retornar None si la empresa no coincide."""
+        result = await producto_repo.get_by_id(db_session, producto_empresa_a.id, empresa_b.id)
         assert result is None
 
     async def test_search_por_nombre(self, db_session, producto_empresa_a):
@@ -396,18 +411,23 @@ class TestProductoRepo:
 class TestClienteRepo:
     """Tests para cliente_repo."""
 
-    async def test_get_by_id_existente(self, db_session, cliente_empresa_a):
-        """get_by_id debe retornar el cliente."""
-        result = await cliente_repo.get_by_id(db_session, cliente_empresa_a.id)
+    async def test_get_by_id_existente(self, db_session, cliente_empresa_a, empresa_a):
+        """get_by_id debe retornar el cliente si existe y pertenece a la empresa."""
+        result = await cliente_repo.get_by_id(db_session, cliente_empresa_a.id, empresa_a.id)
 
         assert result is not None
         assert result.nombre == "Juan"
         assert result.apellido == "Perez"
 
-    async def test_get_by_id_no_existente(self, db_session):
-        """get_by_id debe retornar None."""
-        result = await cliente_repo.get_by_id(db_session, 99999)
+    async def test_get_by_id_no_existente(self, db_session, empresa_a):
+        """get_by_id debe retornar None si no existe."""
+        result = await cliente_repo.get_by_id(db_session, 99999, empresa_a.id)
 
+        assert result is None
+
+    async def test_get_by_id_empresa_erronea(self, db_session, cliente_empresa_a, empresa_b):
+        """get_by_id debe retornar None si la empresa no coincide."""
+        result = await cliente_repo.get_by_id(db_session, cliente_empresa_a.id, empresa_b.id)
         assert result is None
 
     async def test_get_by_celular_existente(self, db_session, cliente_empresa_a):
@@ -551,17 +571,22 @@ class TestUsuarioRepo:
 
         assert result is None
 
-    async def test_get_by_id_existente(self, db_session, user_empresa_a):
-        """get_by_id debe retornar el usuario."""
-        result = await usuario_repo.get_by_id(db_session, user_empresa_a.id)
+    async def test_get_by_id_existente(self, db_session, user_empresa_a, empresa_a):
+        """get_by_id debe retornar el usuario si existe y pertenece a la empresa."""
+        result = await usuario_repo.get_by_id(db_session, user_empresa_a.id, empresa_a.id)
 
         assert result is not None
         assert result.id == user_empresa_a.id
 
-    async def test_get_by_id_no_existente(self, db_session):
-        """get_by_id debe retornar None."""
-        result = await usuario_repo.get_by_id(db_session, 99999)
+    async def test_get_by_id_no_existente(self, db_session, empresa_a):
+        """get_by_id debe retornar None si no existe."""
+        result = await usuario_repo.get_by_id(db_session, 99999, empresa_a.id)
 
+        assert result is None
+
+    async def test_get_by_id_empresa_erronea(self, db_session, user_empresa_a, empresa_b):
+        """get_by_id debe retornar None si la empresa no coincide."""
+        result = await usuario_repo.get_by_id(db_session, user_empresa_a.id, empresa_b.id)
         assert result is None
 
     async def test_create(self, db_session, empresa_a):

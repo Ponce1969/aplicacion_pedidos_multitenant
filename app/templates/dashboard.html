@@ -7,7 +7,7 @@
     <h2 class="text-3xl font-bold text-gray-900">📊 Dashboard - {{ mes_actual }}</h2>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-lg font-semibold text-gray-700">Ventas Totales</h3>
             <p class="text-3xl font-bold text-green-600">{{ total_ventas|pesos }}</p>
@@ -22,6 +22,19 @@
                 {{ (total_ventas / cantidad_pedidos if cantidad_pedidos > 0 else 0)|pesos }}
             </p>
         </div>
+        <a href="/stock-bajo" class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow {% if stock_bajo_count > 0 %}border-l-4 border-red-500{% else %}border-l-4 border-green-500{% endif %}">
+            <h3 class="text-lg font-semibold text-gray-700">⚠️ Stock Bajo</h3>
+            <p class="text-3xl font-bold {% if stock_bajo_count > 0 %}text-red-600{% else %}text-green-600{% endif %}">
+                {{ stock_bajo_count }}
+            </p>
+            <p class="text-sm text-gray-500 mt-1">
+                {% if stock_bajo_count > 0 %}
+                    productos por reponer
+                {% else %}
+                    todo en orden
+                {% endif %}
+            </p>
+        </a>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -44,7 +57,7 @@
 
         <!-- Estado de Pedidos -->
         <div class="bg-white rounded-lg shadow-lg p-6">
-            <h3 class="text-xl font-bold text-gray-900 mb-4">� Estado de Pedidos</h3>
+            <h3 class="text-xl font-bold text-gray-900 mb-4">📦 Estado de Pedidos</h3>
             <div class="space-y-3">
                 <a href="/entregas" class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
                     <span class="text-yellow-700 font-medium">⏳ Pendientes</span>
@@ -60,6 +73,54 @@
                 </a>
             </div>
         </div>
+    </div>
+
+    <!-- Cuenta Corriente -->
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-gray-900">💰 Cuenta Corriente</h3>
+            <div class="text-right">
+                <span class="text-sm text-gray-500">Deuda total:</span>
+                <span class="text-2xl font-bold {% if total_deuda > 0 %}text-red-600{% else %}text-green-600{% endif %} ml-2">
+                    ${{ "%.0f"|format(total_deuda) }}
+                </span>
+            </div>
+        </div>
+
+        {% if top_deudores %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-red-50 text-red-800">
+                        <th class="px-3 py-2 text-left font-semibold">Cliente</th>
+                        <th class="px-3 py-2 text-left font-semibold">Celular</th>
+                        <th class="px-3 py-2 text-right font-semibold">Saldo Pendiente</th>
+                        <th class="px-3 py-2 text-right font-semibold">Límite</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in top_deudores %}
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-3 py-2 font-medium">{{ c.nombre }} {{ c.apellido }}</td>
+                        <td class="px-3 py-2 text-gray-500">{{ c.celular }}</td>
+                        <td class="px-3 py-2 text-right font-bold text-red-600">
+                            ${{ "%.0f"|format(c.saldo_pendiente) }}
+                        </td>
+                        <td class="px-3 py-2 text-right text-gray-500">
+                            {% if c.limite_credito %}
+                                ${{ "%.0f"|format(c.limite_credito) }}
+                            {% else %}
+                                sin límite
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-center py-4">No hay clientes con saldo pendiente</p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

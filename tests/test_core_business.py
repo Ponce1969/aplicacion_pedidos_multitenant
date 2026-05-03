@@ -228,8 +228,14 @@ class TestEntregas:
 
         response = await client.get("/entregas")
         assert response.status_code == 200
-        assert f"#{pedido_empresa_a.id}" in response.text
-        assert f"#{pedido_empresa_b.id}" not in response.text
+
+        # Verificar que pedido de empresa A aparece
+        assert f"pedido-{pedido_empresa_a.id}" in response.text or f"#{pedido_empresa_a.id}" in response.text
+
+        # Verificar que pedido de empresa B NO aparece (aislamiento)
+        # Usamos búsqueda más específica para evitar falsos positivos con colores CSS (#2563eb contiene #2)
+        assert f"href=\"/pedido/{pedido_empresa_b.id}\"" not in response.text
+        assert f"pedido-{pedido_empresa_b.id}" not in response.text
 
     async def test_entregas_filtro_por_fecha(self, client, user_empresa_a, db_session):
         """Filtrar entregas por fecha especifica."""

@@ -310,7 +310,7 @@ class TestSeniaEndToEnd:
         assert response.status_code in [200, 302, 303]
         
         # Verificar que se actualizó
-        updated = await pedido_repo.get_by_id(db_session, pedido.id)
+        updated = await pedido_repo.get_by_id(db_session, pedido.id, empresa_a.id)
         assert updated.senia == Decimal("5000")
         assert updated.estado_pago == "parcial"
 
