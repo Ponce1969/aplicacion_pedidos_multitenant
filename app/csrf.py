@@ -15,6 +15,8 @@ CSRF_EXEMPT_PATHS = {
     "/api/login",
     "/api/refresh-token",
     "/api/logout",
+    "/api/onboarding",
+    "/api/onboarding/register",
     "/health",
     "/static",
     "/docs",
@@ -69,7 +71,7 @@ class CSRFMiddleware:
 
         # Para métodos no seguros, validar CSRF
         if path in CSRF_EXEMPT_PATHS or any(
-            path.startswith(prefix) for prefix in ("/api/login", "/api/refresh-token", "/api/logout")
+            path.startswith(prefix) for prefix in ("/api/login", "/api/refresh-token", "/api/logout", "/api/onboarding")
         ):
             await self.app(scope, receive, send)
             return
