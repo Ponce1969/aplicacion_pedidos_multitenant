@@ -32,6 +32,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/api/forgot-password",
         "/api/reset-password",
         "/api/onboarding",
+        "/api/onboarding/register",
         "/static",
     }
 
