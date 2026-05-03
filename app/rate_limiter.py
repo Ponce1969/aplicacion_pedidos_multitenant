@@ -1,16 +1,13 @@
 """Rate limiting middleware para FastAPI.
 
 Implementa token bucket por IP para prevenir brute force.
-No requiere dependencias externas.
+Versión Pure ASGI para evitar bug de Content-Length.
 """
 
 import time
 from collections import defaultdict
-from collections.abc import Callable
 
-from fastapi import Request, status
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse, Response
+from fastapi import Request
 
 
 class RateLimiter:
@@ -54,7 +51,7 @@ class RateLimiter:
 login_limiter = RateLimiter(max_requests=5, window_seconds=60)
 register_limiter = RateLimiter(max_requests=3, window_seconds=300)
 forgot_password_limiter = RateLimiter(max_requests=3, window_seconds=300)
-onboarding_limiter = RateLimiter(max_requests=3, window_seconds=600)  # 3 registros cada 10 min
+onboarding_limiter = RateLimiter(max_requests=3, window_seconds=600)
 
 PATH_LIMITERS: dict[str, RateLimiter] = {
     "/api/login": login_limiter,
@@ -64,26 +61,41 @@ PATH_LIMITERS: dict[str, RateLimiter] = {
 }
 
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Middleware que aplica rate limiting en endpoints sensibles."""
+class RateLimitMiddleware:
+    """Middleware que aplica rate limiting en endpoints sensibles.
+    
+    Versión Pure ASGI para evitar bug de Content-Length.
+    """
 
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable[[Request], Callable[[], Response]],
-    ) -> Response:
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope, receive=receive)
         path = request.url.path
 
         limiter = PATH_LIMITERS.get(path)
         if limiter is None:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         client_ip = request.client.host if request.client else "unknown"
 
         if not limiter.is_allowed(client_ip):
-            return JSONResponse(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={"detail": "Demasiados intentos. Esperá unos minutos antes de intentar de nuevo."},
-            )
+            body = b'{"detail":"Demasiados intentos. Esper\u00e1 unos minutos antes de intentar de nuevo."}'
+            await send({
+                "type": "http.response.start",
+                "status": 429,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode()),
+                ],
+            })
+            await send({"type": "http.response.body", "body": body})
+            return
 
-        return await call_next(request)
+        await self.app(scope, receive, send)

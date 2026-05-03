@@ -1,27 +1,17 @@
 """Security headers middleware para FastAPI.
 
 Inyecta headers de seguridad en todas las respuestas HTTP.
+Versión Pure ASGI para evitar bug de Content-Length de BaseHTTPMiddleware.
 """
 
-from collections.abc import Callable
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
-
-
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+class SecurityHeadersMiddleware:
     """Agrega headers de seguridad a todas las respuestas."""
 
-    async def dispatch(
-        self,
-        request: object,
-        call_next: Callable[[object], Callable[[], Response]],
-    ) -> Response:
-        response: Response = await call_next(request)
-
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Content-Security-Policy"] = (
+    SECURITY_HEADERS = {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Content-Security-Policy": (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
@@ -29,10 +19,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "font-src 'self'; "
             "connect-src 'self'; "
             "frame-ancestors 'none';"
-        )
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        response.headers["X-XSS-Protection"] = "0"
+        ),
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "X-XSS-Protection": "0",
+    }
 
-        return response
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def wrapped_send(message):
+            if message["type"] == "http.response.start":
+                headers = message.get("headers", [])
+                # Agregar headers de seguridad
+                existing = {h[0].decode(): h[1].decode() for h in headers}
+                for key, value in self.SECURITY_HEADERS.items():
+                    if key not in existing:
+                        headers.append((key.encode(), value.encode()))
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, wrapped_send)
