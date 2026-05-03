@@ -46,14 +46,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         from app.config import settings
 
         if settings.SWAGGER_PASSWORD:
-            docs_url = f"/docs/{settings.SWAGGER_PASSWORD}"
-            redoc_url = f"/redoc/{settings.SWAGGER_PASSWORD}"
-            openapi_url = f"/openapi.json/{settings.SWAGGER_PASSWORD}"
             if (
-                path == docs_url
-                or path == redoc_url
-                or path == openapi_url
-                or path.startswith(f"{docs_url}/")
+                path.startswith(f"/docs/{settings.SWAGGER_PASSWORD}")
+                or path.startswith(f"/openapi.json/{settings.SWAGGER_PASSWORD}")
+                or path.startswith(f"/redoc/{settings.SWAGGER_PASSWORD}")
             ):
                 return await call_next(request)
         else:
