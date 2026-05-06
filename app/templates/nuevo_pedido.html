@@ -17,15 +17,14 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Buscar cliente existente</label>
                 <div class="relative">
-                    <input id="cliente-search" type="text"
+                    <input id="cliente-search" type="text" name="q"
                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                            placeholder="Buscar por nombre, apellido o celular..."
                            hx-get="/api/clientes/buscar"
-                           hx-vals='{"q": ""}'
                            hx-trigger="keyup changed delay:300ms"
                            hx-target="#clientes-dropdown"
                            hx-swap="innerHTML"
-                           oninput="this.setAttribute('hx-vals', JSON.stringify({q: this.value}))">
+                           hx-include="#cliente-search">
                     <div id="clientes-dropdown" class="relative"></div>
                 </div>
             </div>

@@ -262,9 +262,13 @@ async def buscar_clientes(
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     if len(q) < 2:  # noqa: PLR2004 — min search chars
+        logger.debug("buscar_clientes: q='%s' — too short, skipping", q)
         return HTMLResponse("")
 
     clientes = await cliente_repo.search(db, q, current_user.empresa_id)
+    logger.info("buscar_clientes: q='%s' → %d results (empresa_id=%d)", q, len(clientes), current_user.empresa_id)
+    for c in clientes:
+        logger.info("  → id=%d nombre='%s' apellido='%s' celular='%s'", c.id, c.nombre, c.apellido, c.celular)
     return templates.TemplateResponse(
         request,
         "partials/clientes_resultado.html",
