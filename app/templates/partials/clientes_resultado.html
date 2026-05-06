@@ -12,4 +12,7 @@
     </li>
     {% endfor %}
 </ul>
+{% elif query %}
+<!-- DEBUG: sin resultados para '{{ query }}' -->
+<div class="text-sm text-gray-500 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded">Sin resultados para "{{ query }}"</div>
 {% endif %}
