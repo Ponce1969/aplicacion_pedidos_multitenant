@@ -207,7 +207,7 @@ class Pedido(Base):
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
     celular: Mapped[str] = mapped_column(String(20), nullable=False)
     direccion: Mapped[str] = mapped_column(String(200), nullable=False)
-    hora_entrega: Mapped[str] = mapped_column(String(10), nullable=False)
+    hora_entrega: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
     pedido_detalle: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Campos nuevos — Decimal para precisión monetaria

@@ -191,6 +191,9 @@ async def editar_pedido_guardar(  # noqa: PLR0913
     if fecha_entrega:
         fecha_dt = datetime.strptime(fecha_entrega, "%Y-%m-%d").replace(tzinfo=UTC)
     
+    # Hora de entrega opcional
+    hora_entrega_value: str | None = hora_entrega if hora_entrega else None
+    
     # Calcular estado de pago basado en seña vs total
     senia_decimal = Decimal(str(senia)) if senia else Decimal("0")
     
@@ -213,7 +216,7 @@ async def editar_pedido_guardar(  # noqa: PLR0913
         "apellido": apellido,
         "celular": celular,
         "direccion": direccion,
-        "hora_entrega": hora_entrega,
+        "hora_entrega": hora_entrega_value,
         "fecha_entrega": fecha_dt,
         "pedido_detalle": pedido_detalle,
         "estado": estado,
@@ -408,6 +411,9 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
     if fecha_entrega:
         fecha_dt = datetime.strptime(fecha_entrega, "%Y-%m-%d").replace(tzinfo=UTC)
 
+    # Hora de entrega opcional
+    hora_entrega_value: str | None = hora_entrega if hora_entrega else None
+
     # Resolver cliente_id
     cid: int | None = int(cliente_id) if cliente_id else None
 
@@ -434,7 +440,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
             apellido=apellido,
             celular=celular,
             direccion=direccion,
-            hora_entrega=hora_entrega,
+            hora_entrega=hora_entrega_value,
             fecha_entrega=fecha_dt,
             pedido_detalle=pedido_detalle,
             senia=senia_decimal,
@@ -457,7 +463,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
             apellido=apellido,
             celular=celular,
             direccion=direccion,
-            hora_entrega=hora_entrega,
+            hora_entrega=hora_entrega_value,
             fecha_entrega=fecha_dt,
             pedido_detalle=pedido_detalle,
             total=total,

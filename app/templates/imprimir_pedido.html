@@ -270,10 +270,10 @@
             <span class="label">Fecha Entrega:</span>
             <span class="value">{{ pedido.fecha_entrega.strftime('%d/%m/%Y') if pedido.fecha_entrega else 'N/A' }}</span>
         </div>
-        <div class="row">
-            <span class="label">Hora Acordada:</span>
-            <span class="value">{{ pedido.hora_entrega }}</span>
-        </div>
+<div class="row">
+<span class="label">Hora Acordada:</span>
+<span class="value">{% if pedido.hora_entrega %}{{ pedido.hora_entrega }}{% else %}A confirmar{% endif %}</span>
+</div>
     </div>
 
     <!-- Detalle del Pedido -->
@@ -363,7 +363,7 @@
                     <div class="firma-line"></div>
                     <div class="firma-label">Firma del Cliente</div>
                     <div class="firma-label">Aclaración: _________________</div>
-                    <div class="firma-label">DNI: _________________</div>
+                    <div class="firma-label">CI: _________________</div>
                 </div>
                 <div class="firma-item">
                     <div class="firma-line"></div>

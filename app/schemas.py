@@ -54,7 +54,7 @@ class PedidoBase(BaseModel):
     apellido: str = Field(min_length=2, max_length=100)
     celular: str = Field(pattern=r"^\+?[0-9]{8,15}$")
     direccion: str = Field(min_length=5, max_length=200)
-    hora_entrega: str = Field(pattern=r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
+    hora_entrega: str | None = Field(default=None, pattern=r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
     fecha_entrega: date
     pedido_detalle: str
     total: float = Field(gt=0)
