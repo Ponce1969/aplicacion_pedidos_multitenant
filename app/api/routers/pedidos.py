@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import Pedido, Usuario
+from app.models import Cliente as ClienteModel, Pedido, Usuario
 from app.repositories import cliente_repo, producto_repo, entrega_repo
 from app.repositories.producto_repo import InsufficientStockError
 from app.services import pedido_service
@@ -261,15 +261,10 @@ async def buscar_clientes(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    print(f"=== BUSCAR_CLIENTES: q='{q}' empresa_id={current_user.empresa_id} ===")  # noqa: T201
     if len(q) < 2:  # noqa: PLR2004 — min search chars
-        print("=== BUSCAR_CLIENTES: query too short, returning empty ===")  # noqa: T201
         return HTMLResponse("")
 
     clientes = await cliente_repo.search(db, q, current_user.empresa_id)
-    print(f"=== BUSCAR_CLIENTES: found {len(clientes)} results for q='{q}' ===")  # noqa: T201
-    for c in clientes:
-        print(f"  → id={c.id} nombre='{c.nombre}' apellido='{c.apellido}' celular='{c.celular}'")  # noqa: T201
     return templates.TemplateResponse(
         request,
         "partials/clientes_resultado.html",
@@ -419,8 +414,26 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
     # Hora de entrega opcional
     hora_entrega_value: str | None = hora_entrega if hora_entrega else None
 
-    # Resolver cliente_id
+    # Resolver cliente: buscar existente por celular o crear nuevo
     cid: int | None = int(cliente_id) if cliente_id else None
+    if not cid and celular:
+        # Buscar cliente existente por celular, o crear uno nuevo
+        nuevo_cliente = ClienteModel(
+            empresa_id=current_user.empresa_id,
+            nombre=nombre or "Sin nombre",
+            apellido=apellido or "",
+            celular=celular,
+            direccion=direccion or "Sin dirección",
+        )
+        cliente = await cliente_repo.create_or_get_by_celular(db, nuevo_cliente)
+        cid = cliente.id
+        # Si el cliente ya existía, actualizar nombre/apellido/direccion si están vacíos
+        if cliente.nombre == "Sin nombre" and nombre:
+            cliente.nombre = nombre
+        if not cliente.apellido and apellido:
+            cliente.apellido = apellido
+        await db.commit()
+        await db.refresh(cliente)
 
     # Calcular estado de pago basado en seña vs total
     senia_decimal = Decimal(str(senia)) if senia else Decimal("0")
