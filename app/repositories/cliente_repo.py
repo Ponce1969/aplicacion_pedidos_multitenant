@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Cliente, ClienteDireccion, Pago
@@ -50,10 +51,28 @@ async def create(db: AsyncSession, cliente: Cliente) -> Cliente:
 
 
 async def create_or_get_by_celular(db: AsyncSession, cliente: Cliente) -> Cliente:
+    """Busca un cliente por celular o lo crea si no existe.
+
+    Handles race conditions: if two concurrent requests try to create
+    the same client, the DB unique constraint (uq_cliente_empresa_celular)
+    will block the second one. We catch IntegrityError and retry the lookup.
+    """
     existing = await get_by_celular(db, cliente.celular, cliente.empresa_id)
     if existing is not None:
         return existing
-    return await create(db, cliente)
+
+    try:
+        db.add(cliente)
+        await db.commit()
+        await db.refresh(cliente)
+        return cliente
+    except IntegrityError:
+        # Race condition: another request created this client first
+        await db.rollback()
+        existing = await get_by_celular(db, cliente.celular, cliente.empresa_id)
+        if existing is not None:
+            return existing
+        raise  # Re-raise if it's a different IntegrityError
 
 
 # ==================== DIRECCIONES ====================
