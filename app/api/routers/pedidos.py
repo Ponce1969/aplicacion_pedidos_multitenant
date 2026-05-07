@@ -234,6 +234,27 @@ async def editar_pedido_guardar(  # noqa: PLR0913
         if pedido is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
 
+    # Actualizar datos del cliente vinculado si hay cambios
+    if pedido and pedido.cliente_id:
+        cliente = await cliente_repo.get_by_id(db, pedido.cliente_id, current_user.empresa_id)
+        if cliente:
+            changed = False
+            if nombre and cliente.nombre != nombre:
+                cliente.nombre = nombre
+                changed = True
+            if apellido and cliente.apellido != apellido:
+                cliente.apellido = apellido
+                changed = True
+            if celular and cliente.celular != celular:
+                cliente.celular = celular
+                changed = True
+            if direccion and cliente.direccion != direccion:
+                cliente.direccion = direccion
+                changed = True
+            if changed:
+                await db.commit()
+                logger.info("Cliente #%s actualizado (pedido #%s)", cliente.id, pedido_id)
+
     logger.info(
         "Pedido #%s actualizado por usuario #%s (empresa %s): estado=%s, estado_pago=%s, senia=%s",
         pedido.id,

@@ -9,11 +9,11 @@
     <form hx-post="/buscar-pedidos" hx-target="#resultados" hx-swap="innerHTML"
           class="space-y-4">
         <div>
-            <label for="termino" class="block text-sm font-medium text-gray-700">Buscar por celular o apellido</label>
+            <label for="termino" class="block text-sm font-medium text-gray-700">Buscar por nombre, apellido o celular</label>
             <div class="mt-1 relative rounded-md shadow-sm">
                 <input id="termino" name="termino" type="text" required
                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                       placeholder="Ingrese número de celular o apellido...">
+                       placeholder="Ingrese nombre, apellido o celular...">
             </div>
         </div>
         <button type="submit"
