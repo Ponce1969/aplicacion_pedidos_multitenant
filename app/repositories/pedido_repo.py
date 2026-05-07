@@ -27,6 +27,9 @@ async def search_by_celular_or_apellido(
 ) -> list[Pedido]:
     from sqlalchemy import func as sa_func
 
+    # Normalizar: colapsar múltiples espacios a uno solo
+    termino = " ".join(termino.split())
+
     query = (
         select(Pedido)
         .where(
@@ -39,15 +42,8 @@ async def search_by_celular_or_apellido(
         )
         .order_by(Pedido.fecha_creacion.desc())
     )
-    print(f"=== PEDIDO_SEARCH_SQL: termino='{termino}' empresa_id={empresa_id} ===")  # noqa: T201
-    try:
-        result = await db.execute(query)
-        rows = list(result.scalars().all())
-        print(f"=== PEDIDO_SEARCH_RESULT: {len(rows)} found ===")  # noqa: T201
-        return rows
-    except Exception as e:
-        print(f"=== PEDIDO_SEARCH_ERROR: {e} ===")  # noqa: T201
-        raise
+    result = await db.execute(query)
+    return list(result.scalars().all())
 
 
 async def get_by_month(db: AsyncSession, primer_dia_mes: date, empresa_id: int) -> list[Pedido]:

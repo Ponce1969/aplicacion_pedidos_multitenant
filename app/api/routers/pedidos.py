@@ -575,10 +575,6 @@ async def buscar_pedidos(
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     pedidos = await pedido_service.buscar_pedidos(db, termino, current_user.empresa_id)
-    import sqlalchemy
-    print(f"=== BUSCAR_PEDIDOS: termino='{termino}' empresa_id={current_user.empresa_id} → {len(pedidos)} results SA={sqlalchemy.__version__} ===")  # noqa: T201
-    for p in pedidos:
-        print(f"  → Pedido #{p.id}: nombre='{p.nombre}' apellido='{p.apellido}' celular='{p.celular}'")  # noqa: T201
 
     return templates.TemplateResponse(
         request,

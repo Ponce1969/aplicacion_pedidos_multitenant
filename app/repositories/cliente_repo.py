@@ -29,6 +29,9 @@ async def search(db: AsyncSession, termino: str, empresa_id: int) -> list[Client
     """
     from sqlalchemy import func
 
+    # Normalizar: colapsar múltiples espacios a uno solo
+    termino = " ".join(termino.split())
+
     query = (
         select(Cliente)
         .where(
