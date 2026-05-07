@@ -3,25 +3,36 @@
 {% block title %}Buscar Pedidos{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
-    <h2 class="text-2xl font-bold text-gray-900 mb-6">🔍 Buscar Pedidos</h2>
+<div class="max-w-4xl mx-auto">
+    {# Panel de búsqueda #}
+    <div class="bg-white rounded-lg shadow-lg p-8 mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">🔍 Buscar Pedidos</h2>
 
-    <form hx-post="/buscar-pedidos" hx-target="#resultados" hx-swap="innerHTML"
-          class="space-y-4">
-        <div>
-            <label for="termino" class="block text-sm font-medium text-gray-700">Buscar por nombre, apellido, CI o celular</label>
-            <div class="mt-1 relative rounded-md shadow-sm">
-                <input id="termino" name="termino" type="text" required
-                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                       placeholder="Ingrese nombre, apellido, CI o celular...">
+        <form hx-post="/buscar-pedidos" hx-target="#resultados" hx-swap="innerHTML"
+              class="space-y-4">
+            <div>
+                <label for="termino" class="block text-sm font-medium text-gray-700">Buscar por nombre, apellido, CI o celular</label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                    <input id="termino" name="termino" type="text" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Ingrese nombre, apellido, CI o celular...">
+                </div>
             </div>
-        </div>
-        <button type="submit"
-                class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md">
-            🔎 Buscar
-        </button>
-    </form>
+            <button type="submit"
+                    class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md">
+                🔎 Buscar
+            </button>
+        </form>
 
-    <div id="resultados" class="mt-6"></div>
+        <div id="resultados" class="mt-6"></div>
+    </div>
+
+    {# Panel de insights del cliente (renderizado via HTMX) #}
+    <div id="cliente-insights-panel" class="transition-all duration-300">
+        {# El contenido se carga dinámicamente al hacer click en 📊 en los resultados de búsqueda #}
+        <div class="text-center py-8 text-gray-400">
+            <p class="text-sm">📊 Los insights del cliente aparecerán aquí al seleccionar un cliente</p>
+        </div>
+    </div>
 </div>
 {% endblock %}

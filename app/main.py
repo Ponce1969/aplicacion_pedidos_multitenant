@@ -11,7 +11,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Routers
-from app.api.routers import admin, auth, dashboard, pedidos, onboarding, configuracion
+from app.api.routers import admin, auth, clientes, dashboard, pedidos, onboarding, configuracion
 from app.auth import get_current_admin_user, get_password_hash
 from app.config import settings
 from app.database import get_db, init_db
@@ -157,6 +157,7 @@ app.include_router(dashboard.router)
 app.include_router(admin.router)
 app.include_router(onboarding.router)
 app.include_router(configuracion.router)
+app.include_router(clientes.router)
 
 
 @app.get("/health")

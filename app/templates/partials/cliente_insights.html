@@ -1,0 +1,230 @@
+{#
+    Partial HTMX: Insights del Cliente
+    
+    Variables esperadas:
+    - insights: InsightConsolidadoDTO | InsightPedidosDTO
+    - type: "consolidado" | "pedidos"
+    - dias: int
+    - cliente: Cliente (modelo ORM)
+#}
+
+<div id="cliente-insights-container" class="bg-white rounded-lg shadow-md p-6">
+    {# Tabs de navegación #}
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex space-x-2">
+            <button 
+                hx-get="/api/clientes/{{ cliente.id }}/insights?type=consolidado&dias={{ dias }}"
+                hx-target="#cliente-insights-container"
+                hx-swap="outerHTML"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors {% if type == 'consolidado' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                📊 Consolidado
+            </button>
+            <button 
+                hx-get="/api/clientes/{{ cliente.id }}/insights?type=pedidos&dias={{ dias }}"
+                hx-target="#cliente-insights-container"
+                hx-swap="outerHTML"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-colors {% if type == 'pedidos' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                📋 Pedidos
+            </button>
+        </div>
+    </div>
+
+    {# Selector de días #}
+    <div class="flex items-center space-x-2 mb-6">
+        <span class="text-sm text-gray-600">Período:</span>
+        {% set dias_options = [7, 15, 30, 60, 90] %}
+        {% for d in dias_options %}
+        <button 
+            hx-get="/api/clientes/{{ cliente.id }}/insights?type={{ type }}&dias={{ d }}"
+            hx-target="#cliente-insights-container"
+            hx-swap="outerHTML"
+            class="px-3 py-1 text-xs rounded-full transition-colors {% if dias == d %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+            {{ d }}d
+        </button>
+        {% endfor %}
+        <button 
+            hx-get="/api/clientes/{{ cliente.id }}/insights?type={{ type }}&dias=365"
+            hx-target="#cliente-insights-container"
+            hx-swap="outerHTML"
+            class="px-3 py-1 text-xs rounded-full transition-colors {% if dias == 365 %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+            TODO
+        </button>
+    </div>
+
+    {% if type == 'consolidado' %}
+    {# ===== VISTA CONSOLIDADO ===== #}
+    
+    {# Header del cliente #}
+    <div class="mb-6 pb-4 border-b border-gray-200">
+        <h3 class="text-xl font-bold text-gray-900">
+            {{ insights.cliente_nombre }} {{ insights.cliente_apellido }}
+        </h3>
+        <p class="text-gray-600 mt-1">📱 {{ insights.cliente_celular }}</p>
+    </div>
+
+    {# Saldo y límite de crédito #}
+    <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="p-4 rounded-lg {% if insights.saldo_pendiente > 0 %}bg-red-50 border border-red-200{% else %}bg-green-50 border border-green-200{% endif %}">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Saldo Pendiente</p>
+            <p class="text-2xl font-bold {% if insights.saldo_pendiente > 0 %}text-red-700{% else %}text-green-700{% endif %}">
+                ${{ "%.0f"|format(insights.saldo_pendiente|float) }}
+            </p>
+            <p class="text-xs text-gray-500 mt-1">Total acumulado (sin filtro de días)</p>
+        </div>
+        <div class="p-4 rounded-lg {% if insights.limite_credito %}bg-blue-50 border border-blue-200{% else %}bg-gray-50 border border-gray-200{% endif %}">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Límite de Crédito</p>
+            <p class="text-2xl font-bold {% if insights.limite_credito %}text-blue-700{% else %}text-gray-500{% endif %}">
+                {% if insights.limite_credito %}
+                    ${{ "%.0f"|format(insights.limite_credito|float) }}
+                {% else %}
+                    No configurado
+                {% endif %}
+            </p>
+            {% if insights.limite_credito and insights.saldo_pendiente > 0 %}
+                {% set uso_pct = (insights.saldo_pendiente / insights.limite_credito * 100)|round(1) %}
+                <p class="text-xs {% if uso_pct > 80 %}text-red-600 font-medium{% else %}text-gray-500{% endif %} mt-1">
+                    {{ "%.1f"|format(uso_pct) }}% utilizado
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Separador de período #}
+    <div class="flex items-center my-4">
+        <div class="flex-1 h-px bg-gray-300"></div>
+        <span class="px-3 text-sm text-gray-500">Últimos {{ dias }} días</span>
+        <div class="flex-1 h-px bg-gray-300"></div>
+    </div>
+
+    {# Stats del período #}
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+            <p class="text-2xl font-bold text-gray-800">{{ insights.total_pedidos }}</p>
+            <p class="text-xs text-gray-500">Pedidos</p>
+        </div>
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+            <p class="text-2xl font-bold text-gray-800">${{ "%.0f"|format(insights.total_vendido|float) }}</p>
+            <p class="text-xs text-gray-500">Total Vendido</p>
+        </div>
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+            <p class="text-2xl font-bold text-gray-800">${{ "%.0f"|format(insights.total_senia|float) }}</p>
+            <p class="text-xs text-gray-500">Total Seña</p>
+        </div>
+    </div>
+
+    {# Tabla de productos #}
+    {% if insights.productos %}
+    <div class="mt-6">
+        <h4 class="text-sm font-semibold text-gray-700 mb-3">🛒 Productos más comprados</h4>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Cant.</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
+                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Última compra</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for prod in insights.productos %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-2 text-gray-900">{{ prod.producto_descripcion }}</td>
+                        <td class="px-3 py-2 text-right text-gray-600">{{ "%.1f"|format(prod.cantidad_total) }}</td>
+                        <td class="px-3 py-2 text-right font-medium text-gray-900">${{ "%.0f"|format(prod.monto_total|float) }}</td>
+                        <td class="px-3 py-2 text-right text-gray-500">
+                            {% if prod.ultima_compra %}
+                                {{ prod.ultima_compra.strftime('%d/%m/%Y') }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+        <p class="text-yellow-700">📦 Sin compras registradas en los últimos {{ dias }} días</p>
+    </div>
+    {% endif %}
+
+    {% else %}
+    {# ===== VISTA PEDIDOS ===== #}
+    
+    {# Header del cliente #}
+    <div class="mb-6 pb-4 border-b border-gray-200">
+        <h3 class="text-xl font-bold text-gray-900">
+            {{ insights.cliente_nombre }} {{ insights.cliente_apellido }}
+        </h3>
+        <p class="text-gray-600 mt-1">📋 Historial de pedidos</p>
+    </div>
+
+    {% if insights.pedidos %}
+    <div class="space-y-3">
+        {% for p in insights.pedidos %}
+        {# Badge de estado #}
+        {% if p.estado == 'pendiente' %}
+            {% set estado_class = 'bg-yellow-100 text-yellow-800' %}
+            {% set estado_icon = '🕐' %}
+        {% elif p.estado == 'en_camino' %}
+            {% set estado_class = 'bg-blue-100 text-blue-800' %}
+            {% set estado_icon = '🚚' %}
+        {% elif p.estado == 'entregado' %}
+            {% set estado_class = 'bg-green-100 text-green-800' %}
+            {% set estado_icon = '✅' %}
+        {% elif p.estado == 'cancelado' %}
+            {% set estado_class = 'bg-red-100 text-red-800' %}
+            {% set estado_icon = '❌' %}
+        {% else %}
+            {% set estado_class = 'bg-gray-100 text-gray-800' %}
+            {% set estado_icon = '⚪' %}
+        {% endif %}
+
+        {# Badge de pago #}
+        {% if p.estado_pago == 'pagado' %}
+            {% set pago_class = 'bg-green-100 text-green-700' %}
+            {% set pago_text = 'Pagado' %}
+        {% elif p.estado_pago == 'parcial' %}
+            {% set pago_class = 'bg-yellow-100 text-yellow-700' %}
+            {% set pago_text = 'Parcial' %}
+        {% else %}
+            {% set pago_class = 'bg-red-100 text-red-700' %}
+            {% set pago_text = 'Pendiente' %}
+        {% endif %}
+
+        <div class="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow {% if p.estado == 'cancelado' %}opacity-60{% endif %}">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-2">
+                    <span class="font-bold text-gray-900">#{{ p.pedido_id }}</span>
+                    <span class="text-sm text-gray-500">{{ p.fecha.strftime('%d/%m/%Y') }}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="px-2 py-1 text-xs rounded-full font-medium {{ estado_class }}">
+                        {{ estado_icon }} {{ p.estado.replace('_', ' ').title() }}
+                    </span>
+                    <span class="px-2 py-1 text-xs rounded-full font-medium {{ pago_class }}">
+                        {{ pago_text }}
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+                <div class="text-gray-600">
+                    Total: <span class="font-medium text-gray-900">${{ "%.0f"|format(p.total|float) }}</span>
+                </div>
+                <div class="text-gray-600">
+                    Seña: <span class="font-medium text-gray-900">${{ "%.0f"|format(p.senia|float) }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+        <p class="text-yellow-700">📭 Sin pedidos en los últimos {{ dias }} días</p>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>

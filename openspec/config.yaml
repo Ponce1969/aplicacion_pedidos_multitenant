@@ -1,0 +1,36 @@
+# SDD Configuration — BarracaPedidos Multi-Tenant
+schema: spec-driven
+
+context: |
+  Tech stack: Python 3.11+ / FastAPI / SQLAlchemy 2.0 async / PostgreSQL / Jinja2+HTMX / Docker
+  Architecture: Multi-tenant SaaS (empresa_id isolation), CQRS starting (routers → services → repos)
+  Testing: pytest + pytest-asyncio + httpx
+  Style: ruff (lint), mypy (strict), pytest-cov
+
+strict_tdd: true
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+  apply:
+    - Follow existing code patterns and conventions
+    - Query Services MUST reside in app/services/queries/
+    - Query DTOs MUST reside in app/schemas/queries/
+    - Consolidated queries MUST use sqlalchemy.text (native SQL)
+    - empresa_id MUST come from auth token, never from frontend
+  verify:
+    - Run tests if test infrastructure exists
+    - Compare implementation against every spec scenario
+  archive:
+    - Warn before merging destructive deltas (large removals)
