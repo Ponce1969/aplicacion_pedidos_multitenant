@@ -23,13 +23,17 @@ async def get_by_celular(db: AsyncSession, celular: str, empresa_id: int) -> Cli
 
 
 async def search(db: AsyncSession, termino: str, empresa_id: int) -> list[Cliente]:
-    """Busca clientes por celular, CI, apellido, nombre o nombre completo."""
+    """Busca clientes por celular, CI, apellido, nombre o nombre completo.
+
+    Excluye clientes de sistema (Consumidor Final) que tienen es_sistema_default=True.
+    """
     from sqlalchemy import func
 
     query = (
         select(Cliente)
         .where(
             Cliente.empresa_id == empresa_id,
+            Cliente.es_sistema_default == False,  # noqa: E712 — SQLAlchemy requires ==
             (Cliente.celular.contains(termino))
             | (Cliente.ci.contains(termino))
             | (Cliente.apellido.ilike(f"%{termino}%"))
