@@ -15,6 +15,7 @@ from app.repositories import cliente_repo, producto_repo, entrega_repo
 from app.repositories.producto_repo import InsufficientStockError
 from app.services import pedido_service
 from app.services.pedido_service import InvalidEstadoTransition
+from app.services.queries import producto_search_service
 from app.templates_env import get_templates
 
 logger = logging.getLogger(__name__)
@@ -399,13 +400,19 @@ async def get_saldo_cliente(
 async def buscar_productos(
     request: Request,
     q: str = "",
+    cliente_id: int | None = None,
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     if len(q) < 2:  # noqa: PLR2004 — min search chars
         return HTMLResponse("")
 
-    productos = await producto_repo.search(db, q, current_user.empresa_id)
+    productos = await producto_search_service.search_productos(
+        db=db,
+        query=q,
+        empresa_id=current_user.empresa_id,
+        cliente_id=cliente_id,
+    )
     return templates.TemplateResponse(
         request,
         "partials/productos_resultado.html",

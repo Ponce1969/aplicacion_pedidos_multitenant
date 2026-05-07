@@ -1,9 +1,21 @@
 {% if productos %}
-<ul class="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+<ul class="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
     {% for p in productos %}
-    <li class="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
-        onclick="agregarProducto({{ p.id }}, '{{ p.nombre }}', {{ p.precio_base }}, '{{ p.unidad_medida }}')">
-        {{ p.nombre }} — {{ p.precio_base|pesos }} / {{ p.unidad_medida }}
+    <li class="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm flex items-center gap-2"
+        onclick="agregarProducto({{ p.id }}, '{{ p.nombre }}', {{ p.precio_venta }}, '{{ p.unidad_medida }}', {{ p.ultimo_precio_pactado if p.ultimo_precio_pactado is not none else 'null' }})">
+        {% if p.es_frecuente %}
+        <span class="text-amber-500 text-xs" title="Comprado antes">⭐</span>
+        {% else %}
+        <span class="text-gray-400 text-xs" title="Producto del catálogo">📦</span>
+        {% endif %}
+        <span class="flex-1">{{ p.nombre }}</span>
+        {% if p.ultimo_precio_pactado is not none %}
+        <span class="text-xs text-amber-600" title="Último precio pactado">últ: {{ p.ultimo_precio_pactado|pesos }}</span>
+        {% endif %}
+        <span class="text-gray-600">{{ p.precio_venta|pesos }} / {{ p.unidad_medida }}</span>
+        {% if p.stock_actual is not none and p.stock_actual < 0 %}
+        <span class="text-xs text-red-500 font-semibold">⚠ sin stock</span>
+        {% endif %}
     </li>
     {% endfor %}
 </ul>

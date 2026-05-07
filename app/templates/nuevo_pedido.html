@@ -87,7 +87,8 @@
                            hx-get="/api/productos/buscar"
                            hx-trigger="input changed delay:300ms"
                            hx-target="#productos-dropdown"
-                           hx-swap="innerHTML">
+                           hx-swap="innerHTML"
+                           hx-vals="js:getProductoSearchParams()">
                     <div id="productos-dropdown" class="relative"></div>
                 </div>
             </div>
@@ -240,6 +241,11 @@
             });
     }
 
+    function getProductoSearchParams() {
+        const clienteId = document.getElementById('cliente_id').value;
+        return clienteId ? { cliente_id: clienteId } : {};
+    }
+
     function seleccionarDireccion(valor) {
         const input = document.getElementById('direccion');
         if (valor === '__nueva__') {
@@ -252,20 +258,21 @@
         }
     }
 
-    function agregarProducto(productoId, nombre, precio, unidad) {
+    function agregarProducto(productoId, nombre, precio, unidad, ultimoPrecioPactado) {
         // Verificar si ya existe
         const existing = pedidoItems.find(i => i.productoId === productoId);
         if (existing) {
             existing.cantidad += 1;
             existing.subtotal = existing.cantidad * existing.precioUnitario;
         } else {
+            // Si hay último precio pactado, usarlo como precio sugerido
             pedidoItems.push({
                 id: itemCounter++,
                 productoId: productoId,
                 descripcion: nombre,
                 cantidad: 1,
-                precioUnitario: precio,
-                subtotal: precio,
+                precioUnitario: ultimoPrecioPactado || precio,
+                subtotal: ultimoPrecioPactado || precio,
                 unidad: unidad || 'unidad',
             });
         }
