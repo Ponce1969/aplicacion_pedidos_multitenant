@@ -182,6 +182,11 @@
     </form>
 
     <div id="resultado" class="mt-4"></div>
+
+    {# Panel de insights del cliente (carga dinámica al seleccionar) #}
+    <div id="cliente-insights-panel" class="mt-6 transition-all duration-300">
+        {# El contenido se carga vía HTMX al seleccionar un cliente #}
+    </div>
 </div>
 
 <script>
@@ -198,6 +203,12 @@
         document.getElementById('direccion').value = direccion;
         document.getElementById('clientes-dropdown').innerHTML = '';
         document.getElementById('cliente-search').value = nombre + ' ' + apellido;
+
+        // Cargar insights del cliente vía HTMX
+        htmx.ajax('GET', '/api/clientes/' + id + '/insights?type=consolidado&dias=30', {
+            target: '#cliente-insights-panel',
+            swap: 'innerHTML'
+        });
 
         // Cargar direcciones guardadas del cliente vía HTMX
         cargarDirecciones(id);

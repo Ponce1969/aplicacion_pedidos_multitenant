@@ -6,7 +6,7 @@
         <div class="flex justify-between items-start mb-2">
             <div>
                 <div class="font-semibold text-lg">#{{ pedido.id }} - {{ pedido.nombre }} {{ pedido.apellido }}</div>
-                <div class="text-sm text-gray-600">📱 {{ pedido.celular }}</div>
+                <div class="text-sm text-gray-600">📱 {{ pedido.celular }}{% if pedido.ci %} — 🪪 {{ pedido.ci }}{% endif %}</div>
                 <div class="text-sm text-gray-600">📍 {{ pedido.direccion }}</div>
                 {% if pedido.fecha_entrega or pedido.hora_entrega %}
                 <div class="text-sm text-gray-600">📅 {{ pedido.fecha_entrega.strftime('%d/%m/%Y') if pedido.fecha_entrega else '' }} ⏰ {{ pedido.hora_entrega }}</div>
@@ -54,6 +54,17 @@
 
         <!-- Botones de acción -->
         <div class="flex gap-2 mt-3">
+            {% if pedido.cliente_id %}
+            <button
+                type="button"
+                hx-get="/api/clientes/{{ pedido.cliente_id }}/insights?type=consolidado&dias=30"
+                hx-target="#cliente-insights-panel"
+                hx-swap="innerHTML"
+                onclick="document.getElementById('cliente-insights-panel').scrollIntoView({behavior: 'smooth'})"
+                class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded font-medium transition-colors">
+                📊 Insights
+            </button>
+            {% endif %}
             <a href="/pedido/{{ pedido.id }}"
                hx-get="/pedido/{{ pedido.id }}"
                hx-target="#detalle-modal"
