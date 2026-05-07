@@ -25,6 +25,8 @@ async def search_by_celular_or_apellido(
     termino: str,
     empresa_id: int,
 ) -> list[Pedido]:
+    from sqlalchemy import func
+
     query = (
         select(Pedido)
         .where(
@@ -32,7 +34,8 @@ async def search_by_celular_or_apellido(
             (Pedido.celular.contains(termino))
             | (Pedido.ci.contains(termino))
             | (Pedido.apellido.ilike(f"%{termino}%"))
-            | (Pedido.nombre.ilike(f"%{termino}%")),
+            | (Pedido.nombre.ilike(f"%{termino}%"))
+            | (func.concat(Pedido.nombre, " ", Pedido.apellido).ilike(f"%{termino}%")),
         )
         .order_by(Pedido.fecha_creacion.desc())
     )
