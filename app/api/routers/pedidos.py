@@ -575,6 +575,9 @@ async def buscar_pedidos(
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     pedidos = await pedido_service.buscar_pedidos(db, termino, current_user.empresa_id)
+    print(f"=== BUSCAR_PEDIDOS: termino='{termino}' empresa_id={current_user.empresa_id} → {len(pedidos)} results ===")  # noqa: T201
+    for p in pedidos:
+        print(f"  → Pedido #{p.id}: nombre='{p.nombre}' apellido='{p.apellido}' celular='{p.celular}' ci='{p.ci or ''}'")  # noqa: T201
 
     return templates.TemplateResponse(
         request,
