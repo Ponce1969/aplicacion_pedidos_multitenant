@@ -26,12 +26,19 @@
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div>
-                    <label for="celular" class="block text-sm font-medium text-gray-700">Celular</label>
+                    <label for="celular" class="block text-sm font-medium text-gray-700">Celular <span class="text-red-500">*</span></label>
                     <input id="celular" name="celular" type="tel" required
                            value="{{ pedido.celular }}"
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div>
+                    <label for="ci" class="block text-sm font-medium text-gray-700">CI <span class="text-gray-400 text-xs">(opcional)</span></label>
+                    <input id="ci" name="ci" type="text"
+                           value="{{ pedido.ci or '' }}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="12345678">
+                </div>
+                <div class="md:col-span-2">
                     <label for="direccion" class="block text-sm font-medium text-gray-700">Dirección</label>
                     <input id="direccion" name="direccion" type="text" required
                            value="{{ pedido.direccion }}"

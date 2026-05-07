@@ -22,7 +22,7 @@ async def get_by_celular(db: AsyncSession, celular: str, empresa_id: int) -> Cli
 
 
 async def search(db: AsyncSession, termino: str, empresa_id: int) -> list[Cliente]:
-    """Busca clientes por celular, apellido, nombre o nombre completo."""
+    """Busca clientes por celular, CI, apellido, nombre o nombre completo."""
     from sqlalchemy import func
 
     query = (
@@ -30,6 +30,7 @@ async def search(db: AsyncSession, termino: str, empresa_id: int) -> list[Client
         .where(
             Cliente.empresa_id == empresa_id,
             (Cliente.celular.contains(termino))
+            | (Cliente.ci.contains(termino))
             | (Cliente.apellido.ilike(f"%{termino}%"))
             | (Cliente.nombre.ilike(f"%{termino}%"))
             | (func.concat(Cliente.nombre, " ", Cliente.apellido).ilike(f"%{termino}%")),

@@ -253,6 +253,12 @@
             <span class="label">Nombre:</span>
             <span class="value">{{ pedido.nombre }} {{ pedido.apellido }}</span>
         </div>
+        {% if pedido.ci %}
+        <div class="row">
+            <span class="label">CI:</span>
+            <span class="value">{{ pedido.ci }}</span>
+        </div>
+        {% endif %}
         <div class="row">
             <span class="label">Celular:</span>
             <span class="value">{{ pedido.celular }}</span>

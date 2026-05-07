@@ -7,8 +7,9 @@
         data-apellido="{{ c.apellido }}"
         data-celular="{{ c.celular }}"
         data-direccion="{{ c.direccion|default('', true) }}"
-        onclick="seleccionarCliente(this.dataset.id, this.dataset.nombre, this.dataset.apellido, this.dataset.celular, this.dataset.direccion)">
-        {{ c.nombre }} {{ c.apellido }} — 📱 {{ c.celular }}
+        data-ci="{{ c.ci|default('', true) }}"
+        onclick="seleccionarCliente(this.dataset.id, this.dataset.nombre, this.dataset.apellido, this.dataset.celular, this.dataset.direccion, this.dataset.ci)">
+        {{ c.nombre }} {{ c.apellido }}{% if c.ci %} — 🪪 {{ c.ci }}{% endif %} — 📱 {{ c.celular }}
     </li>
     {% endfor %}
 </ul>

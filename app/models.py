@@ -71,6 +71,7 @@ class Cliente(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     empresa_id: Mapped[int] = mapped_column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+    ci: Mapped[str | None] = mapped_column(String(20), nullable=True)  # Cédula de identidad — única por empresa
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
     celular: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -106,6 +107,7 @@ class Cliente(Base):
 
     __table_args__ = (
         UniqueConstraint("empresa_id", "celular", name="uq_cliente_empresa_celular"),
+        UniqueConstraint("empresa_id", "ci", name="uq_cliente_empresa_ci"),
         Index("idx_cliente_celular", "celular"),
     )
 
@@ -206,6 +208,7 @@ class Pedido(Base):
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
     celular: Mapped[str] = mapped_column(String(20), nullable=False)
+    ci: Mapped[str | None] = mapped_column(String(20), nullable=True)  # Cédula de identidad del cliente
     direccion: Mapped[str] = mapped_column(String(200), nullable=False)
     hora_entrega: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
     pedido_detalle: Mapped[str] = mapped_column(Text, nullable=False)

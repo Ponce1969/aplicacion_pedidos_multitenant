@@ -30,6 +30,7 @@ async def search_by_celular_or_apellido(
         .where(
             Pedido.empresa_id == empresa_id,
             (Pedido.celular.contains(termino))
+            | (Pedido.ci.contains(termino))
             | (Pedido.apellido.ilike(f"%{termino}%"))
             | (Pedido.nombre.ilike(f"%{termino}%")),
         )

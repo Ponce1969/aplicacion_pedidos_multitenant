@@ -172,6 +172,7 @@ async def editar_pedido_guardar(  # noqa: PLR0913
     nombre: str = Form(""),
     apellido: str = Form(""),
     celular: str = Form(""),
+    ci: str = Form(""),
     direccion: str = Form(""),
     hora_entrega: str = Form(""),
     fecha_entrega: str = Form(""),
@@ -215,6 +216,7 @@ async def editar_pedido_guardar(  # noqa: PLR0913
         "nombre": nombre,
         "apellido": apellido,
         "celular": celular,
+        "ci": ci.strip() if ci.strip() else None,
         "direccion": direccion,
         "hora_entrega": hora_entrega_value,
         "fecha_entrega": fecha_dt,
@@ -250,6 +252,10 @@ async def editar_pedido_guardar(  # noqa: PLR0913
                 changed = True
             if direccion and cliente.direccion != direccion:
                 cliente.direccion = direccion
+                changed = True
+            ci_value = ci.strip() if ci.strip() else None
+            if ci_value and cliente.ci != ci_value:
+                cliente.ci = ci_value
                 changed = True
             if changed:
                 await db.commit()
@@ -416,6 +422,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
     nombre: str = Form(""),
     apellido: str = Form(""),
     celular: str = Form(""),
+    ci: str = Form(""),
     direccion: str = Form(""),
     hora_entrega: str = Form(""),
     fecha_entrega: str = Form(""),
@@ -435,24 +442,50 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
     # Hora de entrega opcional
     hora_entrega_value: str | None = hora_entrega if hora_entrega else None
 
+    # CI opcional — limpiar espacios
+    ci_value: str | None = ci.strip() if ci.strip() else None
+
     # Resolver cliente: buscar existente por celular o crear nuevo
     cid: int | None = int(cliente_id) if cliente_id else None
     if not cid and celular:
+        # Validar que no exista un cliente con el mismo CI (si se proporcionó)
+        if ci_value:
+            from sqlalchemy import select as sa_select
+            from app.models import Cliente as ClienteCheck
+            existing_ci = await db.execute(
+                sa_select(ClienteCheck).where(
+                    ClienteCheck.empresa_id == current_user.empresa_id,
+                    ClienteCheck.ci == ci_value,
+                )
+            )
+            ci_conflict = existing_ci.scalar_one_or_none()
+            if ci_conflict and ci_conflict.celular != celular:
+                return templates.TemplateResponse(
+                    request,
+                    "partials/error.html",
+                    {"mensaje": f"Ya existe un cliente con CI {ci_value}: {ci_conflict.nombre} {ci_conflict.apellido} (celular: {ci_conflict.celular})"},
+                )
+
         # Buscar cliente existente por celular, o crear uno nuevo
         nuevo_cliente = ClienteModel(
             empresa_id=current_user.empresa_id,
             nombre=nombre or "Sin nombre",
             apellido=apellido or "",
             celular=celular,
+            ci=ci_value,
             direccion=direccion or "Sin dirección",
         )
         cliente = await cliente_repo.create_or_get_by_celular(db, nuevo_cliente)
         cid = cliente.id
-        # Si el cliente ya existía, actualizar nombre/apellido/direccion si están vacíos
+        # Si el cliente ya existía, actualizar datos si es necesario
         if cliente.nombre == "Sin nombre" and nombre:
             cliente.nombre = nombre
         if not cliente.apellido and apellido:
             cliente.apellido = apellido
+        if not cliente.ci and ci_value:
+            cliente.ci = ci_value
+        if cliente.direccion == "Sin dirección" and direccion:
+            cliente.direccion = direccion
         await db.commit()
         await db.refresh(cliente)
 
@@ -478,6 +511,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
             nombre=nombre,
             apellido=apellido,
             celular=celular,
+            ci=ci_value,
             direccion=direccion,
             hora_entrega=hora_entrega_value,
             fecha_entrega=fecha_dt,
@@ -501,6 +535,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
             nombre=nombre,
             apellido=apellido,
             celular=celular,
+            ci=ci_value,
             direccion=direccion,
             hora_entrega=hora_entrega_value,
             fecha_entrega=fecha_dt,

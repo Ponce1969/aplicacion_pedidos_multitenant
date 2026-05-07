@@ -19,7 +19,7 @@
                 <div class="relative">
                     <input id="cliente-search" type="text"
                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="Buscar por nombre, apellido o celular..."
+                           placeholder="Buscar por nombre, apellido, CI o celular..."
                            hx-get="/api/clientes/buscar"
                            hx-vals='{"q": ""}'
                            hx-trigger="keyup changed delay:300ms"
@@ -46,12 +46,18 @@
                            placeholder="Pérez">
                 </div>
                 <div>
-                    <label for="celular" class="block text-sm font-medium text-gray-700">Celular</label>
+                    <label for="celular" class="block text-sm font-medium text-gray-700">Celular <span class="text-red-500">*</span></label>
                     <input id="celular" name="celular" type="tel" required
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                            placeholder="+595991234567">
                 </div>
                 <div>
+                    <label for="ci" class="block text-sm font-medium text-gray-700">CI <span class="text-gray-400 text-xs">(opcional)</span></label>
+                    <input id="ci" name="ci" type="text"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="12345678">
+                </div>
+                <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700">Dirección de Entrega</label>
                     <!-- Select de direcciones guardadas (HTMX) -->
                     <div id="direcciones-container" class="mb-2" style="display: none;">
@@ -186,11 +192,12 @@
     let pedidoItems = [];
     let itemCounter = 0;
 
-    function seleccionarCliente(id, nombre, apellido, celular, direccion) {
+    function seleccionarCliente(id, nombre, apellido, celular, direccion, ci) {
         document.getElementById('cliente_id').value = id;
         document.getElementById('nombre').value = nombre;
         document.getElementById('apellido').value = apellido;
         document.getElementById('celular').value = celular;
+        document.getElementById('ci').value = ci || '';
         document.getElementById('direccion').value = direccion;
         document.getElementById('clientes-dropdown').innerHTML = '';
         document.getElementById('cliente-search').value = nombre + ' ' + apellido;
