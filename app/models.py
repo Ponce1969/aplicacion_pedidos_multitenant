@@ -200,6 +200,7 @@ class Pedido(Base):
     __tablename__ = "pedidos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    numero_pedido: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     empresa_id: Mapped[int] = mapped_column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
     usuario_id: Mapped[int] = mapped_column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     cliente_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("clientes.id"), nullable=True, index=True)
@@ -252,6 +253,7 @@ class Pedido(Base):
         Index("idx_pedido_cliente", "cliente_id"),
         Index("idx_pedido_empresa", "empresa_id"),
         Index("idx_pedido_repartidor", "repartidor_id"),
+        UniqueConstraint("empresa_id", "numero_pedido", name="uq_pedido_empresa_numero"),
     )
 
 

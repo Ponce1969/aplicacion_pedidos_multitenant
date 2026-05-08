@@ -18,7 +18,7 @@
             <div class="flex justify-between items-start">
                 <div class="flex-1">
                     <div class="flex items-center gap-3 mb-1">
-                        <span class="font-bold text-lg">#{{ pedido.id }}</span>
+                        <span class="font-bold text-lg">#{{ pedido.numero_pedido }}</span>
                         <span class="px-2 py-1 rounded text-xs
                              {% if pedido.estado == 'pendiente' %}bg-yellow-100 text-yellow-800
                              {% elif pedido.estado == 'entregado' %}bg-green-100 text-green-800
@@ -61,7 +61,7 @@
                         <a href="/pedido/{{ pedido.id }}/imprimir" target="_blank" class="text-green-500 hover:text-green-700 text-sm" title="Imprimir remito">🖨️</a>
                         <a href="/editar-pedido/{{ pedido.id }}" class="text-blue-500 hover:text-blue-700 text-sm" title="Editar pedido">✏️</a>
                         <button hx-delete="/api/pedido/{{ pedido.id }}"
-                                hx-confirm="¿Eliminar pedido #{{ pedido.id }}?"
+                                hx-confirm="¿Eliminar pedido #{{ pedido.numero_pedido }}?"
                                 hx-target="closest .bg-white"
                                 hx-swap="outerHTML swap:0.3s"
                                 class="text-red-500 hover:text-red-700 text-sm" title="Eliminar pedido">🗑️</button>

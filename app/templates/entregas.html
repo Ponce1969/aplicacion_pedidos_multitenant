@@ -24,7 +24,7 @@
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
                         <div class="flex items-center gap-3 mb-2">
-                            <span class="font-bold text-lg">#{{ pedido.id }}</span>
+                            <span class="font-bold text-lg">#{{ pedido.numero_pedido }}</span>
                             <span class="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">pendiente</span>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
@@ -57,7 +57,7 @@
                             <button hx-post="/api/pedido/{{ pedido.id }}/marcar-entregado"
                                     hx-target="#pedido-{{ pedido.id }}"
                                     hx-swap="outerHTML swap:0.5s"
-                                    hx-confirm="¿Marcar pedido #{{ pedido.id }} como entregado?"
+                                    hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como entregado?"
                                     class="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded transition-colors">
                                 ✅ Entregado
                             </button>

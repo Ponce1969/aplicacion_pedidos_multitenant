@@ -322,7 +322,7 @@ async def editar_pedido_guardar(  # noqa: PLR0913
     return templates.TemplateResponse(
         request,
         "partials/success.html",
-        {"mensaje": f"Pedido #{pedido.id} actualizado correctamente"},
+        {"mensaje": f"Pedido #{pedido.numero_pedido} actualizado correctamente"},
     )
 
 
@@ -603,7 +603,7 @@ async def guardar_pedido(  # noqa: PLR0913 — too many args
     return templates.TemplateResponse(
         request,
         "partials/success.html",
-        {"mensaje": f"✅ Pedido #{saved.id} guardado exitosamente"},
+        {"mensaje": f"✅ Pedido #{saved.numero_pedido} guardado exitosamente"},
     )
 
 

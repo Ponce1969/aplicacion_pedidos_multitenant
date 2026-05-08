@@ -5,7 +5,7 @@
     <li class="p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow">
         <div class="flex justify-between items-start mb-2">
             <div>
-                <div class="font-semibold text-lg">#{{ pedido.id }} - {{ pedido.nombre }} {{ pedido.apellido }}</div>
+                <div class="font-semibold text-lg">#{{ pedido.numero_pedido }} - {{ pedido.nombre }} {{ pedido.apellido }}</div>
                 <div class="text-sm text-gray-600">📱 {{ pedido.celular }}{% if pedido.ci %} — 🪪 {{ pedido.ci }}{% endif %}</div>
                 <div class="text-sm text-gray-600">📍 {{ pedido.direccion }}</div>
                 {% if pedido.fecha_entrega or pedido.hora_entrega %}

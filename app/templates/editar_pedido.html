@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Editar Pedido #{{ pedido.id }}{% endblock %}
+{% block title %}Editar Pedido #{{ pedido.numero_pedido }}{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
-    <h2 class="text-2xl font-bold text-gray-900 mb-6">✏️ Editar Pedido #{{ pedido.id }}</h2>
+    <h2 class="text-2xl font-bold text-gray-900 mb-6">✏️ Editar Pedido #{{ pedido.numero_pedido }}</h2>
 
     <form id="pedido-form" hx-post="/editar-pedido/{{ pedido.id }}" hx-target="#resultado" hx-swap="innerHTML"
           onsubmit="prepararItems()" class="space-y-6">

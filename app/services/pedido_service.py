@@ -34,7 +34,9 @@ class InvalidEstadoTransition(Exception):
 
 
 async def crear_pedido(db: AsyncSession, pedido: Pedido) -> Pedido:
-    """Crea un pedido nuevo en la BD."""
+    """Crea un pedido nuevo en la BD con numero_pedido secuencial por empresa."""
+    if not pedido.numero_pedido:
+        pedido.numero_pedido = await pedido_repo.next_numero_pedido(db, pedido.empresa_id)
     return await pedido_repo.create(db, pedido)
 
 
@@ -52,6 +54,10 @@ async def crear_pedido_con_items(
     
     Stock None = sin control de stock (no se valida ni descuenta).
     """
+    # Asignar numero_pedido secuencial por empresa
+    if not pedido.numero_pedido:
+        pedido.numero_pedido = await pedido_repo.next_numero_pedido(db, pedido.empresa_id)
+
     # Fase 1: Validar stock de todos los items ANTES de crear nada
     productos_para_descontar: list[tuple[int, Decimal]] = []  # (producto_id, cantidad_a_descontar)
     

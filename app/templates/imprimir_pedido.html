@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Pedido #{{ pedido.id }} — Imprimir</title>
+    <title>Pedido #{{ pedido.numero_pedido }} — Imprimir</title>
     <style>
         * {
             margin: 0;
@@ -239,7 +239,7 @@
 
     <div class="header">
         <h1>📦 PEDIDO</h1>
-        <div class="pedido-num">#{{ pedido.id }}</div>
+        <div class="pedido-num">#{{ pedido.numero_pedido }}</div>
         <div class="fecha">
             Fecha: {{ pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M') if pedido.fecha_creacion else 'N/A' }}
         </div>

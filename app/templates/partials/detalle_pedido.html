@@ -1,7 +1,7 @@
 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="this.remove()">
     <div class="bg-white rounded-lg shadow-xl max-w-lg w-full m-4 p-6" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Pedido #{{ pedido.id }}</h3>
+            <h3 class="text-xl font-bold">Pedido #{{ pedido.numero_pedido }}</h3>
             <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
         </div>
 
@@ -72,7 +72,7 @@
                     ✏️ Editar
                 </a>
                 <button hx-delete="/api/pedido/{{ pedido.id }}"
-                        hx-confirm="⚠️ ¿Estás seguro de eliminar el pedido #{{ pedido.id }}? Esta acción no se puede deshacer."
+                        hx-confirm="⚠️ ¿Estás seguro de eliminar el pedido #{{ pedido.numero_pedido }}? Esta acción no se puede deshacer."
                         hx-target="closest .fixed"
                         hx-swap="outerHTML"
                         class="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium transition-colors">

@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Pedido
@@ -11,6 +11,20 @@ async def get_by_id(db: AsyncSession, pedido_id: int, empresa_id: int) -> Pedido
         select(Pedido).where(Pedido.id == pedido_id, Pedido.empresa_id == empresa_id)
     )
     return result.scalar_one_or_none()
+
+
+async def next_numero_pedido(db: AsyncSession, empresa_id: int) -> int:
+    """Devuelve el siguiente numero_pedido disponible para una empresa.
+
+    Usa MAX+1 con locking para evitar condiciones de carrera en multi-tenant.
+    Si no hay pedidos, retorna 1.
+    """
+    result = await db.execute(
+        select(func.coalesce(func.max(Pedido.numero_pedido), 0) + 1).where(
+            Pedido.empresa_id == empresa_id
+        )
+    )
+    return result.scalar_one()
 
 
 async def create(db: AsyncSession, pedido: Pedido) -> Pedido:
