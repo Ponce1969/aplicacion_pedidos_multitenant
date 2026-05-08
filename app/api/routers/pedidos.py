@@ -180,6 +180,7 @@ async def editar_pedido_guardar(  # noqa: PLR0913
     pedido_detalle: str = Form(""),
     estado: str = Form("pendiente"),
     senia: float = Form(0.0),
+    items_json: str = Form(""),
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
@@ -199,40 +200,86 @@ async def editar_pedido_guardar(  # noqa: PLR0913
     # Calcular estado de pago basado en seña vs total
     senia_decimal = Decimal(str(senia)) if senia else Decimal("0")
     
-    # Obtener el pedido actual para saber el total
+    # Obtener el pedido actual
     pedido_actual = await pedido_service.get_pedido_by_id(db, pedido_id, current_user.empresa_id)
     if pedido_actual is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
-    
-    total_decimal = Decimal(str(pedido_actual.total)) if pedido_actual.total else Decimal("0")
-    
-    if senia_decimal >= total_decimal and total_decimal > 0:
-        estado_pago = "pagado"
-    elif senia_decimal > 0:
-        estado_pago = "parcial"
-    else:
-        estado_pago = "pendiente"
 
-    datos = {
-        "nombre": nombre,
-        "apellido": apellido,
-        "celular": celular,
-        "ci": ci.strip() if ci.strip() else None,
-        "direccion": direccion,
-        "hora_entrega": hora_entrega_value,
-        "fecha_entrega": fecha_dt,
-        "pedido_detalle": pedido_detalle,
-        "estado": estado,
-        "senia": senia_decimal,
-        "estado_pago": estado_pago,
-    }
+    # Parsear items_json si viene del formulario dinamico
+    nuevos_items: list[dict[str, float | int | str]] | None = None
+    if items_json and items_json.strip():
+        try:
+            nuevos_items = json.loads(items_json)
+        except (json.JSONDecodeError, ValueError):
+            nuevos_items = None
 
     # Si se está cancelando el pedido, restaurar stock
     if estado == "cancelado" and pedido_actual.estado != "cancelado":
         pedido = await pedido_service.cancelar_pedido(db, pedido_id, current_user.empresa_id)
         if pedido is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+    elif nuevos_items is not None:
+        # Flujo con items editables: actualizar items, stock y total
+        try:
+            pedido = await pedido_service.actualizar_items_pedido(
+                db, pedido_id, current_user.empresa_id, nuevos_items,
+            )
+        except InsufficientStockError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(e),
+            ) from e
+        if pedido is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+        # Actualizar campos del pedido (sin items, ya se procesaron)
+        total_decimal = Decimal(str(pedido.total)) if pedido.total else Decimal("0")
+        if senia_decimal >= total_decimal and total_decimal > 0:
+            estado_pago_calc = "pagado"
+        elif senia_decimal > 0:
+            estado_pago_calc = "parcial"
+        else:
+            estado_pago_calc = "pendiente"
+
+        datos_con_items = {
+            "nombre": nombre,
+            "apellido": apellido,
+            "celular": celular,
+            "ci": ci.strip() if ci.strip() else None,
+            "direccion": direccion,
+            "hora_entrega": hora_entrega_value,
+            "fecha_entrega": fecha_dt,
+            "pedido_detalle": pedido_detalle,
+            "estado": estado,
+            "senia": senia_decimal,
+            "estado_pago": estado_pago_calc,
+        }
+        pedido = await pedido_service.update_pedido(db, pedido_id, current_user.empresa_id, datos_con_items)
+        if pedido is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
     else:
+        # Flujo legacy (sin items): actualizar campos escalares
+        total_decimal = Decimal(str(pedido_actual.total)) if pedido_actual.total else Decimal("0")
+        if senia_decimal >= total_decimal and total_decimal > 0:
+            estado_pago = "pagado"
+        elif senia_decimal > 0:
+            estado_pago = "parcial"
+        else:
+            estado_pago = "pendiente"
+
+        datos = {
+            "nombre": nombre,
+            "apellido": apellido,
+            "celular": celular,
+            "ci": ci.strip() if ci.strip() else None,
+            "direccion": direccion,
+            "hora_entrega": hora_entrega_value,
+            "fecha_entrega": fecha_dt,
+            "pedido_detalle": pedido_detalle,
+            "estado": estado,
+            "senia": senia_decimal,
+            "estado_pago": estado_pago,
+        }
         pedido = await pedido_service.update_pedido(db, pedido_id, current_user.empresa_id, datos)
         if pedido is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")

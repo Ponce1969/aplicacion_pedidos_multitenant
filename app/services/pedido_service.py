@@ -122,6 +122,110 @@ async def crear_pedido_con_items(
     return saved
 
 
+async def actualizar_items_pedido(
+    db: AsyncSession,
+    pedido_id: int,
+    empresa_id: int,
+    nuevos_items: list[dict[str, float | int | str]],
+) -> Pedido | None:
+    """Reemplaza los items de un pedido existente, ajustando stock y total.
+
+    Estrategia segura y atómica:
+    1. Restaurar stock de todos los items actuales
+    2. Eliminar los items actuales
+    3. Validar stock para los nuevos items
+    4. Crear los nuevos items y descontar stock
+    5. Recalcular total y actualizar saldo pendiente del cliente
+
+    Si algún item no tiene stock suficiente, NO se modifica nada (rollback automático).
+
+    Args:
+        db: Sesión de base de datos async
+        pedido_id: ID del pedido a actualizar
+        empresa_id: ID de la empresa (del JWT)
+        nuevos_items: Lista de dicts con descripcion, cantidad, precio_unitario, producto_id
+
+    Returns:
+        Pedido actualizado o None si no se encuentra
+    """
+    pedido = await pedido_repo.get_by_id(db, pedido_id, empresa_id)
+    if pedido is None:
+        return None
+
+    # Calcular saldo pendiente anterior para ajustar luego
+    saldo_anterior = pedido.total - (pedido.senia or Decimal("0"))
+
+    # Fase 1: Restaurar stock de todos los items actuales
+    for item in pedido.items:
+        if item.producto_id is not None:
+            producto = await producto_repo.get_by_id(db, item.producto_id, empresa_id)
+            if producto and producto.stock is not None:
+                producto.stock = producto.stock + item.cantidad
+
+    # Fase 2: Validar stock de todos los nuevos items ANTES de crear nada
+    productos_para_descontar: list[tuple[int, Decimal]] = []
+    for item_data in nuevos_items:
+        cantidad = Decimal(str(item_data.get("cantidad", 1)))
+        producto_id = item_data.get("producto_id")
+        if producto_id is None:
+            continue
+        producto = await producto_repo.get_by_id(db, int(producto_id), empresa_id)
+        if producto is None:
+            continue
+        if producto.stock is not None:
+            if producto.stock < cantidad:
+                # Rollback: restaurar stock de los items que ya descontamos
+                # (SQLAlchemy session maneja el rollback automático si falla)
+                raise InsufficientStockError(producto.nombre, producto.stock, cantidad)
+            productos_para_descontar.append((int(producto_id), cantidad))
+
+    # Fase 3: Eliminar items actuales y crear los nuevos
+    for item in list(pedido.items):
+        await db.delete(item)
+    pedido.items.clear()
+
+    subtotal = Decimal("0")
+    for item_data in nuevos_items:
+        cantidad = Decimal(str(item_data.get("cantidad", 1)))
+        precio = Decimal(str(item_data.get("precio_unitario", 0)))
+        item_subtotal = cantidad * precio
+        subtotal += item_subtotal
+
+        item = PedidoItem(
+            descripcion=item_data["descripcion"],
+            cantidad=cantidad,
+            precio_unitario=precio,
+            subtotal=item_subtotal,
+            producto_id=item_data.get("producto_id"),
+        )
+        pedido.items.append(item)
+
+    pedido.subtotal = subtotal
+    pedido.total = subtotal + (pedido.impuestos or Decimal("0"))
+
+    # Fase 4: Descontar stock de los nuevos items
+    for producto_id, cantidad in productos_para_descontar:
+        producto = await producto_repo.get_by_id(db, producto_id, empresa_id)
+        if producto and producto.stock is not None:
+            producto.stock = producto.stock - cantidad
+
+    await db.flush()
+
+    # Fase 5: Ajustar saldo_pendiente del cliente si aplica
+    if pedido.cliente_id:
+        nuevo_saldo = pedido.total - (pedido.senia or Decimal("0"))
+        # Reemplazar saldo anterior por el nuevo
+        ajuste = nuevo_saldo - saldo_anterior
+        if ajuste != Decimal("0"):
+            cliente = await cliente_repo.get_by_id(db, pedido.cliente_id, empresa_id)
+            if cliente:
+                cliente.saldo_pendiente = (cliente.saldo_pendiente or Decimal("0")) + ajuste
+
+    await db.commit()
+    await db.refresh(pedido)
+    return pedido
+
+
 async def cancelar_pedido(db: AsyncSession, pedido_id: int, empresa_id: int) -> Pedido | None:
     """Cancela un pedido y restaura el stock de cada producto."""
     pedido = await pedido_repo.get_by_id(db, pedido_id, empresa_id)

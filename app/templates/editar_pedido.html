@@ -6,48 +6,103 @@
 <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
     <h2 class="text-2xl font-bold text-gray-900 mb-6">✏️ Editar Pedido #{{ pedido.id }}</h2>
 
-    <form hx-post="/editar-pedido/{{ pedido.id }}" hx-target="#resultado" hx-swap="innerHTML"
-          class="space-y-6">
+    <form id="pedido-form" hx-post="/editar-pedido/{{ pedido.id }}" hx-target="#resultado" hx-swap="innerHTML"
+          onsubmit="prepararItems()" class="space-y-6">
 
-        <!-- Datos del Cliente -->
-        <fieldset class="border rounded-md p-4">
-            <legend class="text-lg font-semibold text-gray-700 px-2">Datos del Cliente</legend>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre</label>
-                    <input id="nombre" name="nombre" type="text" required
-                           value="{{ pedido.nombre }}"
-                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label for="apellido" class="block text-sm font-medium text-gray-700">Apellido</label>
-                    <input id="apellido" name="apellido" type="text" required
-                           value="{{ pedido.apellido }}"
-                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label for="celular" class="block text-sm font-medium text-gray-700">Celular <span class="text-red-500">*</span></label>
-                    <input id="celular" name="celular" type="tel" required
-                           value="{{ pedido.celular }}"
-                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label for="ci" class="block text-sm font-medium text-gray-700">CI <span class="text-gray-400 text-xs">(opcional)</span></label>
-                    <input id="ci" name="ci" type="text"
-                           value="{{ pedido.ci or '' }}"
-                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="12345678">
-                </div>
-                <div class="md:col-span-2">
-                    <label for="direccion" class="block text-sm font-medium text-gray-700">Dirección</label>
-                    <input id="direccion" name="direccion" type="text" required
-                           value="{{ pedido.direccion }}"
-                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
+        <!-- Cliente (solo lectura — ya está vinculado) -->
+        <fieldset class="border rounded-md p-4 bg-gray-50">
+            <legend class="text-lg font-semibold text-gray-700 px-2">Cliente</legend>
+            <div class="text-lg">
+                <span class="font-medium">{{ pedido.nombre }} {{ pedido.apellido }}</span>
+                <span class="text-gray-500 text-sm ml-2">{{ pedido.celular }}</span>
+                {% if pedido.ci %}<span class="text-gray-400 text-sm ml-2">CI: {{ pedido.ci }}</span>{% endif %}
             </div>
+            <input type="hidden" id="cliente_id" name="cliente_id" value="{{ pedido.cliente_id or '' }}">
         </fieldset>
 
-        <!-- Datos de Entrega -->
+        <!-- Items del pedido (editable) -->
+        <fieldset class="border rounded-md p-4">
+            <legend class="text-lg font-semibold text-gray-700 px-2">Productos del Pedido</legend>
+
+            <!-- Buscar producto -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Buscar producto</label>
+                <div class="relative">
+                    <input id="producto-search" type="text" name="q"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Buscar por nombre o SKU..."
+                           hx-get="/api/productos/buscar"
+                           hx-trigger="input changed delay:300ms"
+                           hx-target="#productos-dropdown"
+                           hx-swap="innerHTML"
+                           hx-vals="js:getProductoSearchParams()">
+                    <div id="productos-dropdown" class="relative"></div>
+                </div>
+            </div>
+
+            <!-- Tabla de items -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-700">
+                            <th class="px-2 py-2 text-left">Producto</th>
+                            <th class="px-2 py-2 w-24">Cantidad</th>
+                            <th class="px-2 py-2 w-32">Precio Unit.</th>
+                            <th class="px-2 py-2 w-32">Subtotal</th>
+                            <th class="px-2 py-2 w-10"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-body">
+                        <!-- Filas dinámicas aquí -->
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t font-bold text-lg">
+                            <td colspan="3" class="px-2 py-3 text-right">Total:</td>
+                            <td class="px-2 py-3 text-green-600" id="total-display">$ 0</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="mt-3">
+                <button type="button" onclick="agregarLineaManual()"
+                        class="text-sm text-blue-600 hover:text-blue-800 underline">
+                    + Agregar línea manual
+                </button>
+            </div>
+
+            <!-- Seña/Adelanto -->
+            <div class="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
+                <h4 class="text-lg font-semibold text-blue-800 mb-3">💰 Seña / Adelanto</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <div>
+                        <label for="senia" class="block text-sm font-medium text-blue-700">Monto de Seña ($)</label>
+                        <input id="senia" name="senia" type="number" step="0.01" min="0"
+                               value="{{ pedido.senia or 0 }}"
+                               class="mt-1 block w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
+                               placeholder="0"
+                               onchange="actualizarSaldo()">
+                    </div>
+                    <div class="text-center">
+                        <span class="text-sm text-gray-600">Saldo Pendiente:</span>
+                        <div id="saldo-display" class="text-2xl font-bold text-orange-600">$ {{ (pedido.total - (pedido.senia or 0))|pesos }}</div>
+                    </div>
+                    <div class="text-center">
+                        <span class="text-sm text-gray-600">Estado:</span>
+                        <div id="estado-pago-display" class="text-lg font-semibold px-3 py-1 rounded-full inline-block mt-1 bg-gray-200 text-gray-700">
+                            {{ pedido.estado_pago|capitalize if pedido.estado_pago else 'Pendiente' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden inputs -->
+            <input type="hidden" id="total" name="total" value="{{ pedido.total or 0 }}">
+            <input type="hidden" id="items_json" name="items_json" value="[]">
+        </fieldset>
+
+        <!-- Datos de entrega -->
         <fieldset class="border rounded-md p-4">
             <legend class="text-lg font-semibold text-gray-700 px-2">Datos de Entrega</legend>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -58,109 +113,46 @@
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div>
-                    <label for="hora_entrega" class="block text-sm font-medium text-gray-700">Hora de Entrega</label>
-                    <input id="hora_entrega" name="hora_entrega" type="time" required
-                           value="{{ pedido.hora_entrega }}"
-                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <label for="hora_entrega" class="block text-sm font-medium text-gray-700">Hora de Entrega <span class="text-gray-400 text-xs">(opcional)</span></label>
+                    <input id="hora_entrega" name="hora_entrega" type="time"
+                           value="{{ pedido.hora_entrega or '' }}"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Opcional">
                 </div>
+            </div>
+
+            <!-- Dirección -->
+            <div class="mt-4">
+                <label for="direccion" class="block text-sm font-medium text-gray-700">Dirección de Entrega</label>
+                <input id="direccion" name="direccion" type="text" required
+                       value="{{ pedido.direccion }}"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="Calle y número">
             </div>
         </fieldset>
 
-        <!-- Detalle del pedido -->
+        <!-- Notas -->
         <fieldset class="border rounded-md p-4">
-            <legend class="text-lg font-semibold text-gray-700 px-2">Detalle del Pedido</legend>
-
-            {% if pedido.items %}
-            <div class="mb-4">
-                <h4 class="font-semibold text-gray-700 text-sm mb-2">Items del pedido:</h4>
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="bg-gray-50 text-gray-500 text-xs">
-                            <th class="text-left pb-1">Producto</th>
-                            <th class="text-right pb-1">Cant.</th>
-                            <th class="text-right pb-1">P.Unit.</th>
-                            <th class="text-right pb-1">Subt.</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in pedido.items %}
-                        <tr class="border-b border-gray-100">
-                            <td class="py-1">{{ item.descripcion }}</td>
-                            <td class="py-1 text-right">{{ item.cantidad }} {{ item.producto.unidad_medida if item.producto and item.producto.unidad_medida else 'unidad' }}</td>
-                            <td class="py-1 text-right">{{ item.precio_unitario|pesos }}</td>
-                            <td class="py-1 text-right">{{ item.subtotal|pesos }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                    <tfoot>
-                        <tr class="font-bold">
-                            <td colspan="3" class="pt-2 text-right">Total:</td>
-                            <td class="pt-2 text-right text-green-600">{{ pedido.total|pesos }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-                <p class="text-xs text-gray-500 mt-2">💡 Para modificar los items, eliminá este pedido y creá uno nuevo.</p>
-            </div>
-            {% endif %}
-
-            <div>
-                <label for="pedido_detalle" class="block text-sm font-medium text-gray-700">Notas / Detalle adicional</label>
-                <textarea id="pedido_detalle" name="pedido_detalle" rows="3"
-                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">{{ pedido.pedido_detalle }}</textarea>
-            </div>
+            <legend class="text-lg font-semibold text-gray-700 px-2">Notas / Detalle</legend>
+            <textarea id="pedido_detalle" name="pedido_detalle" rows="3"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">{{ pedido.pedido_detalle or '' }}</textarea>
         </fieldset>
 
-        <!-- Seña y Estado de Pago -->
+        <!-- Estado -->
         <fieldset class="border rounded-md p-4">
-            <legend class="text-lg font-semibold text-gray-700 px-2">💰 Pago y Seña</legend>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Total del Pedido</label>
-                    <div class="text-xl font-bold text-green-600">{{ pedido.total|pesos }}</div>
-                </div>
-                <div>
-                    <label for="senia" class="block text-sm font-medium text-gray-700">Seña / Adelanto</label>
-                    <input id="senia" name="senia" type="number" step="0.01" min="0"
-                           value="{{ pedido.senia or 0 }}"
-                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Saldo Pendiente</label>
-                    {% set saldo = pedido.total - (pedido.senia or 0) %}
-                    <div class="text-xl font-bold {% if saldo > 0 %}text-orange-600{% else %}text-green-600{% endif %}">
-                        {{ saldo|pesos }}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Estado de Pago Actual</label>
-                    {% if pedido.estado_pago == 'pagado' %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-200 text-green-800">
-                            ✅ Pagado
-                        </span>
-                    {% elif pedido.estado_pago == 'parcial' %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-200 text-yellow-800">
-                            💰 Parcial
-                        </span>
-                    {% else %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-700">
-                            ⏳ Pendiente
-                        </span>
-                    {% endif %}
-                </div>
-                <div>
-                    <label for="estado" class="block text-sm font-medium text-gray-700">Estado del Pedido</label>
-                    <select name="estado" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        <option value="pendiente" {% if pedido.estado == 'pendiente' %}selected{% endif %}>⏳ Pendiente</option>
-                        <option value="entregado" {% if pedido.estado == 'entregado' %}selected{% endif %}>✅ Entregado</option>
-                        <option value="cancelado" {% if pedido.estado == 'cancelado' %}selected{% endif %}>❌ Cancelado</option>
-                    </select>
-                </div>
-            </div>
+            <legend class="text-lg font-semibold text-gray-700 px-2">Estado del Pedido</legend>
+            <select name="estado" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="pendiente" {% if pedido.estado == 'pendiente' %}selected{% endif %}>⏳ Pendiente</option>
+                <option value="entregado" {% if pedido.estado == 'entregado' %}selected{% endif %}>✅ Entregado</option>
+                <option value="cancelado" {% if pedido.estado == 'cancelado' %}selected{% endif %}>❌ Cancelado</option>
+            </select>
         </fieldset>
+
+        <!-- Hidden fields for form submission -->
+        <input type="hidden" name="nombre" value="{{ pedido.nombre }}">
+        <input type="hidden" name="apellido" value="{{ pedido.apellido }}">
+        <input type="hidden" name="celular" value="{{ pedido.celular }}">
+        <input type="hidden" name="ci" value="{{ pedido.ci or '' }}">
 
         <div class="flex gap-4">
             <button type="submit"
@@ -175,4 +167,153 @@
 
     <div id="resultado" class="mt-4"></div>
 </div>
+
+<script>
+    // Inicializar items desde el pedido existente
+    let pedidoItems = [
+        {% for item in pedido.items %}
+        {
+            id: {{ loop.index }},
+            productoId: {{ item.producto_id or 'null' }},
+            descripcion: "{{ item.descripcion|e }}",
+            cantidad: {{ item.cantidad }},
+            precioUnitario: {{ item.precio_unitario }},
+            subtotal: {{ item.subtotal }},
+            unidad: "{{ item.producto.unidad_medida if item.producto and item.producto.unidad_medida else 'unidad' }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    let itemCounter = pedidoItems.length + 1;
+
+    // Renderizar items al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        renderItems();
+        actualizarSaldo();
+    });
+
+    function getProductoSearchParams() {
+        const clienteId = document.getElementById('cliente_id').value;
+        return clienteId ? { cliente_id: clienteId } : {};
+    }
+
+    function agregarProducto(productoId, nombre, precio, unidad, ultimoPrecioPactado) {
+        const existing = pedidoItems.find(i => i.productoId === productoId);
+        if (existing) {
+            existing.cantidad += 1;
+            existing.subtotal = existing.cantidad * existing.precioUnitario;
+        } else {
+            pedidoItems.push({
+                id: itemCounter++,
+                productoId: productoId,
+                descripcion: nombre,
+                cantidad: 1,
+                precioUnitario: ultimoPrecioPactado || precio,
+                subtotal: ultimoPrecioPactado || precio,
+                unidad: unidad || 'unidad',
+            });
+        }
+        renderItems();
+        document.getElementById('productos-dropdown').innerHTML = '';
+        document.getElementById('producto-search').value = '';
+    }
+
+    function agregarLineaManual() {
+        pedidoItems.push({
+            id: itemCounter++,
+            productoId: null,
+            descripcion: '',
+            cantidad: 1,
+            precioUnitario: 0,
+            subtotal: 0,
+            unidad: 'unidad',
+        });
+        renderItems();
+    }
+
+    function eliminarItem(itemId) {
+        pedidoItems = pedidoItems.filter(i => i.id !== itemId);
+        renderItems();
+    }
+
+    function actualizarItem(itemId, campo, valor) {
+        const item = pedidoItems.find(i => i.id === itemId);
+        if (item) {
+            item[campo] = campo === 'descripcion' ? valor : parseFloat(valor) || 0;
+            item.subtotal = item.cantidad * item.precioUnitario;
+            renderItems();
+        }
+    }
+
+    function renderItems() {
+        const tbody = document.getElementById('items-body');
+        let total = 0;
+        let html = '';
+
+        pedidoItems.forEach(item => {
+            total += item.subtotal;
+            html += `
+                <tr class="border-b">
+                    <td class="px-2 py-2">
+                        <input type="text" value="${item.descripcion}" 
+                               onchange="actualizarItem(${item.id}, 'descripcion', this.value)"
+                               class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                               placeholder="Descripción del producto" required>
+                    </td>
+                    <td class="px-2 py-2">
+                        <div class="flex items-center gap-1">
+                            <input type="number" value="${item.cantidad}" step="0.01" min="0.01"
+                                   onchange="actualizarItem(${item.id}, 'cantidad', this.value)"
+                                   class="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center">
+                            <span class="text-xs text-gray-500">${item.unidad || 'unidad'}</span>
+                        </div>
+                    </td>
+                    <td class="px-2 py-2">
+                        <input type="number" value="${item.precioUnitario}" step="0.01" min="0"
+                               onchange="actualizarItem(${item.id}, 'precioUnitario', this.value)"
+                               class="w-full px-2 py-1 border border-gray-300 rounded text-sm text-right">
+                    </td>
+                    <td class="px-2 py-2 text-right font-medium">
+                        $ ${item.subtotal.toLocaleString('es-PY', {minimumFractionDigits: 0})}
+                    </td>
+                    <td class="px-2 py-2 text-center">
+                        <button type="button" onclick="eliminarItem(${item.id})"
+                                class="text-red-500 hover:text-red-700 text-lg font-bold">&times;</button>
+                    </td>
+                </tr>`;
+        });
+
+        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center text-gray-400 py-4">Agregue productos al pedido</td></tr>';
+        document.getElementById('total-display').textContent = '$ ' + total.toLocaleString('es-PY', {minimumFractionDigits: 0});
+        document.getElementById('total').value = total;
+    }
+
+    function actualizarSaldo() {
+        const total = parseFloat(document.getElementById('total').value) || 0;
+        const senia = parseFloat(document.getElementById('senia').value) || 0;
+        const saldo = total - senia;
+        document.getElementById('saldo-display').textContent = '$ ' + saldo.toLocaleString('es-PY', {minimumFractionDigits: 0});
+
+        const estadoDisplay = document.getElementById('estado-pago-display');
+        if (saldo <= 0 && total > 0) {
+            estadoDisplay.textContent = 'Pagado';
+            estadoDisplay.className = 'text-lg font-semibold px-3 py-1 rounded-full inline-block mt-1 bg-green-200 text-green-800';
+        } else if (senia > 0) {
+            estadoDisplay.textContent = 'Parcial';
+            estadoDisplay.className = 'text-lg font-semibold px-3 py-1 rounded-full inline-block mt-1 bg-yellow-200 text-yellow-800';
+        } else {
+            estadoDisplay.textContent = 'Pendiente';
+            estadoDisplay.className = 'text-lg font-semibold px-3 py-1 rounded-full inline-block mt-1 bg-gray-200 text-gray-700';
+        }
+    }
+
+    function prepararItems() {
+        const items = pedidoItems.map(i => ({
+            producto_id: i.productoId,
+            descripcion: i.descripcion,
+            cantidad: i.cantidad,
+            precio_unitario: i.precioUnitario,
+        }));
+        document.getElementById('items_json').value = JSON.stringify(items);
+    }
+</script>
 {% endblock %}
