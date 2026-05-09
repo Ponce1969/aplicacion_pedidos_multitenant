@@ -19,6 +19,11 @@
                     data-tab="usuarios">
                 👥 Usuarios
             </button>
+            <button onclick="switchTab('catalogo')"
+                    class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700"
+                    data-tab="catalogo">
+                📦 Catálogo
+            </button>
         </nav>
     </div>
 
@@ -43,8 +48,12 @@ function switchTab(tabName) {
     }
 
     // Load tab content via HTMX
-    const url = tabName === 'empresa' ? '/admin/tab/empresa' : '/admin/tab/usuarios';
-    htmx.ajax('GET', url, '#tab-content');
+    const tabUrls = {
+        empresa: '/admin/tab/empresa',
+        usuarios: '/admin/tab/usuarios',
+        catalogo: '/admin/tab/catalogo',
+    };
+    htmx.ajax('GET', tabUrls[tabName], '#tab-content');
 }
 </script>
 {% endblock %}

@@ -115,3 +115,14 @@ async def get_asignados_by_repartidor(
     )
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+async def list_all_for_export(db: AsyncSession, empresa_id: int) -> list[Pedido]:
+    """Obtiene todos los pedidos de una empresa para exportación CSV."""
+    query = (
+        select(Pedido)
+        .where(Pedido.empresa_id == empresa_id)
+        .order_by(Pedido.numero_pedido.desc())
+    )
+    result = await db.execute(query)
+    return list(result.scalars().all())

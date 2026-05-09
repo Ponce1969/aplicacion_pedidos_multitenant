@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_admin_user, require_role
 from app.database import get_db
-from app.models import ROLE_ADMIN, ROLE_OWNER, VALID_ROLES, Usuario
-from app.repositories import empresa_repo, usuario_repo
+from app.models import ROLE_ADMIN, ROLE_OWNER, VALID_ROLES, Producto, Usuario
+from app.repositories import empresa_repo, producto_repo, usuario_repo
 from app.templates_env import get_templates
 from app.utils import normalizar_rut, validar_rut
 
@@ -335,4 +335,218 @@ async def reset_password(
         request,
         "admin/partials/tab_usuarios.html",
         {"user": current_user, "usuarios": usuarios, "valid_roles": VALID_ROLES},
+    )
+
+
+# ==================== CATÁLOGO DE PRODUCTOS ====================
+
+
+@router.get("/admin/tab/catalogo", response_class=HTMLResponse)
+async def tab_catalogo(
+    request: Request,
+    q: str = "",
+    current_user: Usuario = Depends(get_current_admin_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """HTMX partial: tab de catálogo de productos."""
+    if q and len(q) >= 2:
+        all_prods = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+        productos = [p for p in all_prods if q.lower() in p.nombre.lower() or (p.sku and q.lower() in p.sku.lower())]
+    else:
+        productos = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_catalogo.html",
+        {"user": current_user, "productos": productos, "q": q},
+    )
+
+
+@router.get("/admin/productos/nuevo", response_class=HTMLResponse)
+async def nuevo_producto_form(
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+) -> HTMLResponse:
+    """Muestra formulario para crear un nuevo producto."""
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/producto_form.html",
+        {"user": current_user, "producto": None, "error": None},
+    )
+
+
+@router.post("/admin/productos/crear", response_class=HTMLResponse)
+async def crear_producto(
+    request: Request,
+    nombre: str = Form(...),
+    sku: str = Form(""),
+    precio_base: float = Form(0),
+    unidad_medida: str = Form("unidad"),
+    stock: str = Form(""),
+    descripcion: str = Form(""),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Crea un nuevo producto."""
+    from decimal import Decimal as D
+
+    stock_value = D(stock) if stock.strip() else None
+
+    producto = Producto(
+        empresa_id=current_user.empresa_id,
+        nombre=nombre.strip(),
+        sku=sku.strip() or None,
+        precio_base=D(str(precio_base)),
+        unidad_medida=unidad_medida,
+        stock=stock_value,
+        descripcion=descripcion.strip() or None,
+        is_active=True,
+    )
+    saved = await producto_repo.create(db, producto)
+    logger.info("Producto '%s' (#%s) creado por %s #%s", saved.nombre, saved.id, current_user.rol, current_user.id)
+
+    productos = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_catalogo.html",
+        {"user": current_user, "productos": productos, "q": ""},
+    )
+
+
+@router.get("/admin/productos/{producto_id}/editar", response_class=HTMLResponse)
+async def editar_producto_form(
+    producto_id: int,
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Muestra formulario para editar un producto."""
+    producto = await producto_repo.get_by_id(db, producto_id, current_user.empresa_id)
+    if producto is None:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/producto_form.html",
+        {"user": current_user, "producto": producto, "error": None},
+    )
+
+
+@router.post("/admin/productos/{producto_id}/editar", response_class=HTMLResponse)
+async def editar_producto_guardar(
+    producto_id: int,
+    request: Request,
+    nombre: str = Form(...),
+    sku: str = Form(""),
+    precio_base: float = Form(0),
+    unidad_medida: str = Form("unidad"),
+    stock: str = Form(""),
+    descripcion: str = Form(""),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Guarda cambios en un producto."""
+    from decimal import Decimal as D
+
+    producto = await producto_repo.get_by_id(db, producto_id, current_user.empresa_id)
+    if producto is None:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    producto.nombre = nombre.strip()
+    producto.sku = sku.strip() or None
+    producto.precio_base = D(str(precio_base))
+    producto.unidad_medida = unidad_medida
+    producto.stock = D(stock) if stock.strip() else None
+    producto.descripcion = descripcion.strip() or None
+
+    await db.commit()
+    await db.refresh(producto)
+    logger.info("Producto #%s editado por %s #%s", producto_id, current_user.rol, current_user.id)
+
+    productos = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_catalogo.html",
+        {"user": current_user, "productos": productos, "q": ""},
+    )
+
+
+@router.post("/admin/productos/{producto_id}/toggle", response_class=HTMLResponse)
+async def toggle_producto(
+    producto_id: int,
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Activa o desactiva un producto (soft delete)."""
+    producto = await producto_repo.get_by_id(db, producto_id, current_user.empresa_id)
+    if producto is None:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    if producto.is_active:
+        await producto_repo.deactivate(db, producto_id, current_user.empresa_id)
+        logger.info("Producto #%s desactivado por %s #%s", producto_id, current_user.rol, current_user.id)
+    else:
+        await producto_repo.activate(db, producto_id, current_user.empresa_id)
+        logger.info("Producto #%s reactivado por %s #%s", producto_id, current_user.rol, current_user.id)
+
+    productos = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_catalogo.html",
+        {"user": current_user, "productos": productos, "q": ""},
+    )
+
+
+# ==================== EXPORTACIÓN CSV ====================
+
+
+@router.get("/admin/pedidos/exportar-csv")
+async def exportar_pedidos_csv(
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """Exporta pedidos de la empresa a CSV."""
+    import csv
+    import io
+    from datetime import datetime as dt
+
+    from fastapi.responses import StreamingResponse
+
+    from app.repositories import pedido_repo
+
+    pedidos = await pedido_repo.list_all_for_export(db, current_user.empresa_id)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "N°", "Fecha", "Cliente", "Celular", "CI", "Dirección",
+        "Total", "Seña", "Saldo", "Estado", "Estado Pago",
+        "Items",
+    ])
+
+    for p in pedidos:
+        items_str = "; ".join(
+            f"{i.descripcion} x{i.cantidad} @ {i.precio_unitario}" for i in p.items
+        )
+        saldo = (p.total or 0) - (p.senia or 0)
+        writer.writerow([
+            p.numero_pedido,
+            p.fecha_creacion.strftime("%d/%m/%Y %H:%M") if p.fecha_creacion else "",
+            f"{p.nombre} {p.apellido}",
+            p.celular,
+            p.ci or "",
+            p.direccion,
+            p.total or 0,
+            p.senia or 0,
+            saldo,
+            p.estado,
+            p.estado_pago,
+            items_str,
+        ])
+
+    output.seek(0)
+    filename = f"pedidos_{dt.now().strftime('%Y%m%d_%H%M')}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

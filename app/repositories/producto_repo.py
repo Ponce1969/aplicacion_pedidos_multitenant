@@ -113,3 +113,35 @@ async def count_stock_bajo(db: AsyncSession, empresa_id: int) -> int:
     result = await db.execute(query)
     count: int = result.scalar() or 0
     return count
+
+
+async def list_all(db: AsyncSession, empresa_id: int, include_inactive: bool = False) -> list[Producto]:
+    """Lista todos los productos de una empresa. Include_inactive incluye los desactivados."""
+    query = select(Producto).where(Producto.empresa_id == empresa_id)
+    if not include_inactive:
+        query = query.where(Producto.is_active == True)  # noqa: E712
+    query = query.order_by(Producto.is_active.desc(), Producto.nombre)
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
+async def deactivate(db: AsyncSession, producto_id: int, empresa_id: int) -> Producto | None:
+    """Desactiva un producto (soft delete). Retorna None si no existe."""
+    producto = await get_by_id(db, producto_id, empresa_id)
+    if producto is None:
+        return None
+    producto.is_active = False
+    await db.commit()
+    await db.refresh(producto)
+    return producto
+
+
+async def activate(db: AsyncSession, producto_id: int, empresa_id: int) -> Producto | None:
+    """Reactiva un producto desactivado."""
+    producto = await get_by_id(db, producto_id, empresa_id)
+    if producto is None:
+        return None
+    producto.is_active = True
+    await db.commit()
+    await db.refresh(producto)
+    return producto
