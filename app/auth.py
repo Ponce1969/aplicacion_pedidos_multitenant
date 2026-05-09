@@ -198,12 +198,37 @@ async def get_current_admin_user(
     Raises:
         HTTPException 403: El usuario no es administrador.
     """
-    if not current_user.is_admin and current_user.rol != "admin":
+    if not current_user.is_admin and current_user.rol not in ("admin", "owner"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Se requieren permisos de administrador",
         )
     return current_user
+
+
+def require_role(*allowed_roles: str):
+    """Dependency que verifica que el usuario tenga uno de los roles permitidos.
+
+    Uso en routers:
+        current_user: Usuario = Depends(require_role("owner", "admin"))
+
+    Args:
+        allowed_roles: Roles permitidos (owner, admin, vendedor, repartidor).
+
+    Returns:
+        Dependency function para FastAPI.
+    """
+    async def _check_role(current_user: Usuario = Depends(get_current_user)) -> Usuario:  # noqa: B008
+        if current_user.rol not in allowed_roles and not (
+            "admin" in allowed_roles and current_user.is_admin
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Se requiere rol: {', '.join(allowed_roles)}",
+            )
+        return current_user
+
+    return _check_role
 
 
 async def logout_user(token: str, db: AsyncSession) -> None:

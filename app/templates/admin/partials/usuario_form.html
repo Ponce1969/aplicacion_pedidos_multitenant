@@ -1,0 +1,95 @@
+<div class="bg-white shadow-md rounded-lg p-6 mb-6">
+    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+        {% if usuario_edit %}✏️ Editar Usuario{% else %}➕ Nuevo Usuario{% endif %}
+    </h3>
+
+    {% if error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form {% if usuario_edit %}
+          hx-post="/admin/usuarios/{{ usuario_edit.id }}/editar"
+          {% else %}
+          hx-post="/admin/usuarios/crear"
+          {% endif %}
+          hx-target="#tab-content" hx-swap="innerHTML"
+          class="space-y-4">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+                <input type="text" name="nombre" required
+                       value="{{ usuario_edit.nombre if usuario_edit else '' }}"
+                       class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Apellido *</label>
+                <input type="text" name="apellido" required
+                       value="{{ usuario_edit.apellido if usuario_edit else '' }}"
+                       class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <input type="email" name="email" required
+                       value="{{ usuario_edit.email if usuario_edit else '' }}"
+                       class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Rol *</label>
+                <select name="rol"
+                        {% if user.rol != 'owner' %}disabled{% endif %}
+                        class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    {% for r in valid_roles %}
+                    <option value="{{ r }}" {% if usuario_edit and usuario_edit.rol == r %}selected{% elif not usuario_edit and r == 'vendedor' %}selected{% endif %}>
+                        {% if r == 'owner' %}Owner{% elif r == 'admin' %}Admin{% elif r == 'vendedor' %}Vendedor{% elif r == 'repartidor' %}Repartidor{% else %}{{ r }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if user.rol != 'owner' %}
+                <input type="hidden" name="rol" value="{{ usuario_edit.rol if usuario_edit else 'vendedor' }}">
+                <p class="text-xs text-gray-500 mt-1">Solo el owner puede cambiar roles.</p>
+                {% endif %}
+            </div>
+            {% if not usuario_edit %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña *</label>
+                <input type="password" name="password" required minlength="6"
+                       class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                       placeholder="Mínimo 6 caracteres">
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="flex gap-3 pt-2">
+            <button type="submit"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium transition-colors">
+                {% if usuario_edit %}💾 Guardar Cambios{% else %}➕ Crear Usuario{% endif %}
+            </button>
+            <button type="button" onclick="document.getElementById('usuario-form-area').innerHTML = ''"
+                    class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-2 rounded font-medium transition-colors">
+                Cancelar
+            </button>
+        </div>
+    </form>
+
+    {% if usuario_edit and user.rol == 'owner' %}
+    <hr class="my-4">
+    <details class="text-sm">
+        <summary class="cursor-pointer text-gray-600 hover:text-gray-800">🔑 Resetear contraseña</summary>
+        <form hx-post="/admin/usuarios/{{ usuario_edit.id }}/reset-password" hx-target="#tab-content" hx-swap="innerHTML"
+              class="mt-3 flex gap-2 items-end">
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Nueva contraseña</label>
+                <input type="password" name="new_password" required minlength="6"
+                       class="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-red-500 focus:outline-none">
+            </div>
+            <button type="submit"
+                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
+                Resetear
+            </button>
+        </form>
+    </details>
+    {% endif %}
+</div>

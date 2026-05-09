@@ -1,0 +1,88 @@
+<div>
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">Usuarios del equipo</h3>
+        {% if user.rol == 'owner' %}
+        <button onclick="htmx.ajax('GET', '/admin/usuarios/nuevo', '#usuario-form-area')"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
+            ➕ Nuevo Usuario
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Form area for create/edit -->
+    <div id="usuario-form-area"></div>
+
+    <!-- Users table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Último Login</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for u in usuarios %}
+                <tr class="{% if not u.is_active %}bg-gray-50 opacity-60{% endif %} hover:bg-blue-50 transition-colors">
+                    <td class="px-4 py-3 text-sm">
+                        {{ u.nombre }} {{ u.apellido }}
+                        {% if u.id == user.id %}
+                        <span class="text-xs text-blue-500 ml-1">(vos)</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600">{{ u.email }}</td>
+                    <td class="px-4 py-3">
+                        {% if u.rol == 'owner' %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Owner</span>
+                        {% elif u.rol == 'admin' %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Admin</span>
+                        {% elif u.rol == 'vendedor' %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Vendedor</span>
+                        {% elif u.rol == 'repartidor' %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Repartidor</span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{{ u.rol }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if u.is_active %}
+                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Activo</span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-500">
+                        {{ u.ultimo_login.strftime('%d/%m/%Y %H:%M') if u.ultimo_login else 'Nunca' }}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        {% if u.id != user.id and user.rol == 'owner' %}
+                        <div class="flex gap-1 justify-end">
+                            <button onclick="htmx.ajax('GET', '/admin/usuarios/{{ u.id }}/editar', '#usuario-form-area')"
+                                    class="text-blue-500 hover:text-blue-700 text-sm" title="Editar">✏️</button>
+                            <form hx-post="/admin/usuarios/{{ u.id }}/toggle" hx-target="#tab-content" hx-swap="innerHTML"
+                                  style="display:inline">
+                                {% if u.is_active %}
+                                <button type="submit" class="text-red-500 hover:text-red-700 text-sm" title="Desactivar">🚫</button>
+                                {% else %}
+                                <button type="submit" class="text-green-500 hover:text-green-700 text-sm" title="Reactivar">✅</button>
+                                {% endif %}
+                            </form>
+                        </div>
+                        {% elif u.id != user.id and user.rol == 'admin' %}
+                        <button onclick="htmx.ajax('GET', '/admin/usuarios/{{ u.id }}/editar', '#usuario-form-area')"
+                                class="text-blue-500 hover:text-blue-700 text-sm" title="Editar">✏️</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if not usuarios %}
+        <div class="p-4 text-center text-gray-500">No hay usuarios registrados</div>
+        {% endif %}
+    </div>
+</div>

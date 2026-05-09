@@ -38,3 +38,32 @@ async def list_all(db: AsyncSession, empresa_id: int) -> list[Usuario]:
         .order_by(Usuario.fecha_creacion.desc()),
     )
     return list(result.scalars().all())
+
+
+async def update(db: AsyncSession, usuario: Usuario) -> Usuario:
+    """Actualiza un usuario existente. El objeto ya debe tener los campos modificados."""
+    await db.commit()
+    await db.refresh(usuario)
+    return usuario
+
+
+async def deactivate(db: AsyncSession, user_id: int, empresa_id: int) -> Usuario | None:
+    """Desactiva un usuario (soft delete). Retorna None si no existe."""
+    usuario = await get_by_id(db, user_id, empresa_id)
+    if usuario is None:
+        return None
+    usuario.is_active = False
+    await db.commit()
+    await db.refresh(usuario)
+    return usuario
+
+
+async def activate(db: AsyncSession, user_id: int, empresa_id: int) -> Usuario | None:
+    """Reactiva un usuario desactivado."""
+    usuario = await get_by_id(db, user_id, empresa_id)
+    if usuario is None:
+        return None
+    usuario.is_active = True
+    await db.commit()
+    await db.refresh(usuario)
+    return usuario

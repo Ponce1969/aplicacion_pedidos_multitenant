@@ -74,9 +74,8 @@
                 <a href="/entregas" class="hover:underline">🚚 Entregas</a>
                 <a href="/buscar" class="hover:underline">🔍 Buscar</a>
                 <a href="/dashboard" class="hover:underline">📊 Dashboard</a>
-                {% if user and user.is_admin %}
-                <a href="/admin/usuarios" class="hover:underline">👥 Usuarios</a>
-                <a href="/admin/configuracion" class="hover:underline">⚙️</a>
+                {% if user and user.rol in ('owner', 'admin') %}
+                <a href="/admin" class="hover:underline">⚙️ Administración</a>
                 {% endif %}
             </div>
             <div class="flex gap-4 items-center">
