@@ -39,8 +39,9 @@ def generar_slug(nombre: str) -> str:
 
 # ==================== RUT URUGUAYO ====================
 
-# Pesos para el cálculo del dígito verificador del RUT uruguayo (de derecha a izquierda)
-_RUT_WEIGHTS = [2, 9, 8, 7, 6, 5, 4, 3, 2]
+# Pesos para el cálculo del dígito verificador del RUT uruguayo
+# Se aplican de IZQUIERDA a DERECHA sobre los dígitos base
+_RUT_WEIGHTS = [4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 
 
 def normalizar_rut(rut: str) -> str:
@@ -50,9 +51,9 @@ def normalizar_rut(rut: str) -> str:
     hasta completar 12 dígitos.
 
     Ejemplos:
-        "21.123.456-7"  -> "002112345670"
-        "2-1123456-7"   -> "002112345670"
-        "211234567"      -> "002112345670"  (sin DV, se calcula)
+        "21.479.785-0018"  -> "214797850018"  (RUT empresa)
+        "21.479.785-0"      -> "0021479785000"   (sin DV explícito, se calcula)
+        "1234567-8"         -> "000012345678"   (CI corta)
 
     Returns:
         RUT normalizado a 12 dígitos (sin puntos ni guiones).
@@ -86,7 +87,14 @@ def normalizar_rut(rut: str) -> str:
 def validar_rut(rut: str) -> bool:
     """Valida que un RUT uruguayo sea correcto.
 
-    Verifica el dígito verificador usando el algoritmo oficial.
+    Verifica el dígito verificador usando el algoritmo oficial de la DGI.
+
+    Algoritmo:
+    1. Tomar los dígitos base (sin DV)
+    2. Multiplicar de izquierda a derecha por los pesos [4,3,2,9,8,7,6,5,4,3,2]
+    3. Sumar productos
+    4. DV = (11 - (suma mod 11)) mod 11
+    5. Si DV = 10, se convierte en 0
 
     Args:
         rut: RUT en cualquier formato (con puntos, guiones, etc.)
@@ -112,24 +120,22 @@ def validar_rut(rut: str) -> bool:
 def _calcular_dv_rut(base: str) -> str:
     """Calcula el dígito verificador de un RUT uruguayo.
 
-    Algoritmo oficial:
-    1. Multiplicar cada dígito de derecha a izquierda por los pesos [2,9,8,7,6,5,4,3,2]
-    2. Sumar los productos
-    3. Calcular resto = (11 - (suma % 11)) % 11
-    4. Si resto es 10, DV es '0'. Si resto es 0, DV es '0'. En hex, 10->K pero en UY se usa 0.
+    Algoritmo DGI (dirección de izquierda a derecha):
+    1. Rellenar base con ceros a la izquierda hasta 11 dígitos
+    2. Multiplicar cada dígito por el peso correspondiente: [4,3,2,9,8,7,6,5,4,3,2]
+    3. Sumar productos
+    4. DV = (11 - (suma mod 11)) mod 11
+    5. Si DV = 10, se convierte en 0
     """
-    # Rellenar base con ceros a la izquierda para tener suficientes dígitos
-    base_rellenada = base.zfill(len(_RUT_WEIGHTS))
+    base_rellenada = base.zfill(11)
 
     suma = 0
     for i, weight in enumerate(_RUT_WEIGHTS):
-        pos = len(base_rellenada) - 1 - i
-        if pos >= 0:
-            suma += int(base_rellenada[pos]) * weight
+        suma += int(base_rellenada[i]) * weight
 
-    resto = (11 - (suma % 11)) % 11
+    dv = (11 - (suma % 11)) % 11
 
-    # En Uruguay: resto 10 → K, resto 0 → 0, resto 1-9 → el número
-    if resto == 10:
+    # En Uruguay: 10 → 0
+    if dv == 10:
         return "0"
-    return str(resto)
+    return str(dv)
