@@ -24,6 +24,8 @@ class SecurityHeadersMiddleware:
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         "X-XSS-Protection": "0",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Pragma": "no-cache",
     }
 
     def __init__(self, app) -> None:
