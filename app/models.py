@@ -197,6 +197,10 @@ class Producto(Base):
     unidad_medida: Mapped[str] = mapped_column(String(20), default="unidad", server_default="unidad")
     categoria: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    es_automatico: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    """True = creado JIT al armar un pedido. False = cargado manualmente en catálogo."""
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationship: un producto aparece en muchas líneas de pedido

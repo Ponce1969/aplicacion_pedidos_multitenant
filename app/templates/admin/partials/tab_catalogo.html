@@ -45,6 +45,9 @@
                 <tr class="{% if not p.is_active %}bg-gray-50 opacity-60{% endif %} hover:bg-blue-50 transition-colors">
                     <td class="px-4 py-3 text-sm">
                         {{ p.nombre }}
+                        {% if p.es_automatico %}
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 ml-1" title="Producto creado automáticamente al armar un pedido — editá sus datos para completarlo">AUTO</span>
+                        {% endif %}
                         {% if p.descripcion %}<span class="text-xs text-gray-400 ml-1">{{ p.descripcion[:40] }}{% if p.descripcion|length > 40 %}...{% endif %}</span>{% endif %}
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-600">{{ p.sku or '—' }}</td>

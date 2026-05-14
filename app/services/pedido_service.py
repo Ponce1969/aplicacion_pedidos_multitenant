@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Pedido, PedidoItem
 from app.repositories import pedido_repo, producto_repo, entrega_repo, cliente_repo
 from app.repositories.producto_repo import InsufficientStockError
+from app.services.producto_service import find_or_create_producto
 
 # Estados válidos del pedido (flujo de entrega)
 VALID_ESTADOS = {"pendiente", "asignado", "en_camino", "entregado", "no_entregado", "cancelado"}
@@ -57,6 +58,22 @@ async def crear_pedido_con_items(
     # Asignar numero_pedido secuencial por empresa
     if not pedido.numero_pedido:
         pedido.numero_pedido = await pedido_repo.next_numero_pedido(db, pedido.empresa_id)
+
+    # Fase 0: Resolver productos JIT — items sin producto_id se vinculan
+    # a productos existentes (por nombre normalizado) o se crean nuevos (es_automatico=True)
+    for item_data in items:
+        if item_data.get("producto_id") is None and item_data.get("descripcion"):
+            nombre_raw = str(item_data["descripcion"])
+            precio = Decimal(str(item_data.get("precio_unitario", 0)))
+            producto = await find_or_create_producto(
+                db=db,
+                empresa_id=pedido.empresa_id,
+                nombre_raw=nombre_raw,
+                precio_unitario=precio,
+            )
+            item_data["producto_id"] = producto.id
+            # PedidoItem.descripcion conserva el texto original del usuario
+            # Producto.nombre tiene la versión normalizada
 
     # Fase 1: Validar stock de todos los items ANTES de crear nada
     productos_para_descontar: list[tuple[int, Decimal]] = []  # (producto_id, cantidad_a_descontar)
@@ -157,6 +174,20 @@ async def actualizar_items_pedido(
     pedido = await pedido_repo.get_by_id(db, pedido_id, empresa_id)
     if pedido is None:
         return None
+
+    # Fase 0: Resolver productos JIT — items sin producto_id se vinculan
+    # a productos existentes (por nombre normalizado) o se crean nuevos (es_automatico=True)
+    for item_data in nuevos_items:
+        if item_data.get("producto_id") is None and item_data.get("descripcion"):
+            nombre_raw = str(item_data["descripcion"])
+            precio = Decimal(str(item_data.get("precio_unitario", 0)))
+            producto = await find_or_create_producto(
+                db=db,
+                empresa_id=empresa_id,
+                nombre_raw=nombre_raw,
+                precio_unitario=precio,
+            )
+            item_data["producto_id"] = producto.id
 
     # Calcular saldo pendiente anterior para ajustar luego
     saldo_anterior = pedido.total - (pedido.senia or Decimal("0"))

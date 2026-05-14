@@ -456,6 +456,10 @@ async def editar_producto_guardar(
     producto.unidad_medida = unidad_medida
     producto.stock = D(stock) if stock.strip() else None
     producto.descripcion = descripcion.strip() or None
+    # Promover producto JIT a manual al editarlo — completa sus datos
+    if producto.es_automatico:
+        producto.es_automatico = False
+        logger.info("Producto JIT #%s promovido a manual por %s #%s", producto_id, current_user.rol, current_user.id)
 
     await db.commit()
     await db.refresh(producto)

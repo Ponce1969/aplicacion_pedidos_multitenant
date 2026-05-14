@@ -463,7 +463,7 @@ async def buscar_productos(
     return templates.TemplateResponse(
         request,
         "partials/productos_resultado.html",
-        {"productos": productos},
+        {"productos": productos, "search_term": q},
     )
 
 

@@ -7,7 +7,7 @@ Estrategia:
 1. Primero busca productos del historial del cliente (marcados como frecuentes)
 2. Luego busca productos del catálogo general
 3. Deduplica: si un producto aparece en ambos segmentos, prevalece el historial
-4. Ordena: frecuentes primero, luego catálogo alfabéticamente
+4. Ordena: manuales primero (es_automatico=False), luego frecuentes, luego por nombre
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from app.schemas.queries.producto_search import ProductoSearchResultDTO
 
 # SQL que combina historial + catálogo en una sola query eficiente.
 # Usa CTEs para separar los segmentos y luego UNION ALL + deduplicación.
+# ORDER BY: manuales primero (es_automatico ASC), frecuentes segundo, nombre tercero.
 HYBRID_SEARCH_SQL = text("""
     WITH historial AS (
         -- Segmento A: Productos comprados previamente por el cliente
@@ -31,7 +32,8 @@ HYBRID_SEARCH_SQL = text("""
             p.unidad_medida,
             p.stock AS stock_actual,
             TRUE AS es_frecuente,
-            last_pi.precio_unitario AS ultimo_precio_pactado
+            last_pi.precio_unitario AS ultimo_precio_pactado,
+            p.es_automatico
         FROM productos p
         INNER JOIN pedido_items pi ON pi.producto_id = p.id
         INNER JOIN pedidos pe ON pe.id = pi.pedido_id
@@ -64,7 +66,8 @@ HYBRID_SEARCH_SQL = text("""
             p.unidad_medida,
             p.stock AS stock_actual,
             FALSE AS es_frecuente,
-            NULL::NUMERIC AS ultimo_precio_pactado
+            NULL::NUMERIC AS ultimo_precio_pactado,
+            p.es_automatico
         FROM productos p
         WHERE p.empresa_id = :empresa_id
             AND p.is_active = TRUE
@@ -74,7 +77,7 @@ HYBRID_SEARCH_SQL = text("""
     SELECT * FROM historial
     UNION ALL
     SELECT * FROM catalogo
-    ORDER BY es_frecuente DESC, nombre ASC
+    ORDER BY es_automatico ASC, es_frecuente DESC, nombre ASC
     LIMIT :limit
 """)
 
@@ -87,12 +90,13 @@ CATALOG_ONLY_SQL = text("""
         p.unidad_medida,
         p.stock AS stock_actual,
         FALSE AS es_frecuente,
-        NULL::NUMERIC AS ultimo_precio_pactado
+        NULL::NUMERIC AS ultimo_precio_pactado,
+        p.es_automatico
     FROM productos p
     WHERE p.empresa_id = :empresa_id
         AND p.is_active = TRUE
         AND (p.nombre ILIKE :pattern OR p.sku ILIKE :pattern)
-    ORDER BY p.nombre
+    ORDER BY p.es_automatico ASC, p.nombre ASC
     LIMIT :limit
 """)
 
@@ -116,6 +120,7 @@ async def search_productos(
     Returns:
         Lista de ProductoSearchResultDTO con productos frecuentes primero,
         luego productos del catálogo, sin duplicados.
+        Manuales (es_automatico=False) siempre antes de automáticos (JIT).
     """
     # Normalizar espacios en la búsqueda (igual que en cliente_repo)
     termino = " ".join(query.split())
@@ -151,6 +156,7 @@ async def search_productos(
             stock_actual=Decimal(str(row.stock_actual)) if row.stock_actual is not None else None,
             es_frecuente=row.es_frecuente,
             ultimo_precio_pactado=Decimal(str(row.ultimo_precio_pactado)) if row.ultimo_precio_pactado is not None else None,
+            es_automatico=row.es_automatico,
         )
         for row in rows
     ]

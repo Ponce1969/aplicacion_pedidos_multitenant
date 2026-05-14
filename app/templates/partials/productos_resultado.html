@@ -9,6 +9,9 @@
         <span class="text-gray-400 text-xs" title="Producto del catálogo">📦</span>
         {% endif %}
         <span class="flex-1">{{ p.nombre }}</span>
+        {% if p.es_automatico %}
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700" title="Producto creado automáticamente — completá sus datos en Catálogo">AUTO</span>
+        {% endif %}
         {% if p.ultimo_precio_pactado is not none %}
         <span class="text-xs text-amber-600" title="Último precio pactado">últ: {{ p.ultimo_precio_pactado|pesos }}</span>
         {% endif %}
@@ -19,4 +22,16 @@
     </li>
     {% endfor %}
 </ul>
+{% else %}
+{# Cuando no hay resultados, mostrar botón para agregar como producto nuevo #}
+{% if search_term and search_term|length >= 2 %}
+<div class="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg p-3 text-center">
+    <p class="text-sm text-gray-500 mb-2">No se encontraron productos para "<strong>{{ search_term }}</strong>"</p>
+    <button type="button"
+            onclick="agregarProductoJIT('{{ search_term|e }}')"
+            class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors">
+        ➕ Agregar <strong>'{{ search_term|e }}'</strong> como nuevo producto
+    </button>
+</div>
+{% endif %}
 {% endif %}

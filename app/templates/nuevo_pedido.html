@@ -281,6 +281,32 @@
         document.getElementById('producto-search').value = '';
     }
 
+    /**
+     * Agregar un producto JIT (no existe en catálogo) al pedido.
+     * Se usa cuando el buscador no tiene resultados y el usuario hace clic
+     * en "Agregar como nuevo producto". El backend se encarga de crear
+     * el producto via find_or_create_producto cuando se guarda el pedido.
+     */
+    function agregarProductoJIT(nombre) {
+        pedidoItems.push({
+            id: itemCounter++,
+            productoId: null,  // Sin ID — el backend lo creará como JIT
+            descripcion: nombre,
+            cantidad: 1,
+            precioUnitario: 0,
+            subtotal: 0,
+            unidad: 'unidad',
+        });
+        renderItems();
+        document.getElementById('productos-dropdown').innerHTML = '';
+        document.getElementById('producto-search').value = '';
+        // Foco al primer input de precio del item recién agregado
+        setTimeout(() => {
+            const rows = document.querySelectorAll('#items-body input[type="number"]');
+            if (rows.length >= 2) rows[rows.length - 2].focus(); // Precio del último item
+        }, 50);
+    }
+
     function agregarLineaManual() {
         pedidoItems.push({
             id: itemCounter++,
