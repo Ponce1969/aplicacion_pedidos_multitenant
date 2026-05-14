@@ -32,10 +32,10 @@
                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                            placeholder="Buscar por nombre o SKU..."
                            hx-get="/api/productos/buscar"
-                           hx-trigger="input changed delay:300ms"
+                           hx-trigger="input delay:300ms"
                            hx-target="#productos-dropdown"
                            hx-swap="innerHTML"
-                           hx-vals="js:getProductoSearchParams()">
+                           >
                     <div id="productos-dropdown" class="relative"></div>
                 </div>
             </div>
