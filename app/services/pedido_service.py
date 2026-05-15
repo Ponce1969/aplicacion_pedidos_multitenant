@@ -410,10 +410,14 @@ async def cambiar_estado_entrega(
     envía una notificación por email (best-effort, no bloquea el cambio).
     
     Raises:
-        InvalidEstadoTransition: Si la transición no es válida.
+        InvalidEstadoTransition: Si la transición no es válida o el pedido
+            no existe (incluye caso de aislamiento de tenant, por lo que el
+            error se trata como "no encontrado" = 404 para el cliente).
     """
     pedido = await pedido_repo.get_by_id(db, pedido_id, empresa_id)
     if pedido is None:
+        # Pedido no existe (incluye caso cross-tenant: existe en otra empresa)
+        # Se usa la misma excepción para no filtrar información de existencia
         raise InvalidEstadoTransition("desconocido", nuevo_estado)
 
     estado_actual = pedido.estado
@@ -457,7 +461,11 @@ async def _notificar_cambio_estado(
     nuevo_estado: str,
     empresa_id: int,
 ) -> None:
-    """Envía email de notificación al cliente (best-effort, nunca lanza excepción)."""
+    """Envía email de notificación al cliente Y a la empresa (best-effort, nunca lanza excepción).
+
+    Resiliencia: si el email falla (sin API key, sin email del destinatario, error de red),
+    el cambio de estado SIEMPRE se completa. El email es secundario.
+    """
     from app.repositories import usuario_repo as usuario_repo_mod
     from app.schemas import EmailTemplateData
     from app.services.email_service import EmailService
@@ -467,18 +475,13 @@ async def _notificar_cambio_estado(
         from app.models import Cliente, Empresa
         from sqlalchemy import select
 
-        cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.cliente_id))
-        cliente = cliente_result.scalar_one_or_none()
-        if not cliente or not cliente.email:
-            return
-
-        # Obtener empresa
+        # Obtener empresa (siempre necesaria para el template)
         empresa_result = await db.execute(select(Empresa).where(Empresa.id == empresa_id))
         empresa = empresa_result.scalar_one_or_none()
         if not empresa:
             return
 
-        # Preparar datos del template
+        # Preparar datos del template (compartidos entre cliente y empresa)
         items_data = [
             {
                 "cantidad": float(item.cantidad),
@@ -494,9 +497,9 @@ async def _notificar_cambio_estado(
             empresa_color=empresa.color_primario or "#3b82f6",
             email_contacto=empresa.email_contacto,
             telefono_contacto=empresa.telefono_contacto,
-            cliente_nombre=f"{cliente.nombre} {cliente.apellido}",
-            cliente_email=cliente.email,
-            pedido_id=pedido.id,
+            cliente_nombre=f"{pedido.nombre} {pedido.apellido}",
+            cliente_email=pedido.celular,  # Fallback: podría no tener email
+            pedido_id=pedido.numero_pedido,
             pedido_estado=nuevo_estado,
             pedido_total=float(pedido.total) if pedido.total else None,
             pedido_senia=float(pedido.senia) if pedido.senia else None,
@@ -507,10 +510,62 @@ async def _notificar_cambio_estado(
         )
 
         email_service = EmailService()
-        await email_service.send_pedido_update(template_data)
+
+        # 1. Notificar al CLIENTE (si tiene email)
+        if pedido.cliente_id:
+            cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.cliente_id))
+            cliente = cliente_result.scalar_one_or_none()
+            if cliente and cliente.email:
+                try:
+                    template_data_cliente = EmailTemplateData(
+                        empresa_nombre=empresa.nombre,
+                        empresa_logo=empresa.logo_url,
+                        empresa_color=empresa.color_primario or "#3b82f6",
+                        email_contacto=empresa.email_contacto,
+                        telefono_contacto=empresa.telefono_contacto,
+                        cliente_nombre=f"{cliente.nombre} {cliente.apellido}",
+                        cliente_email=cliente.email,
+                        pedido_id=pedido.numero_pedido,
+                        pedido_estado=nuevo_estado,
+                        pedido_total=float(pedido.total) if pedido.total else None,
+                        pedido_senia=float(pedido.senia) if pedido.senia else None,
+                        pedido_saldo=float(pedido.total - (pedido.senia or 0)) if pedido.total else None,
+                        items=items_data,
+                        fecha_entrega=pedido.fecha_entrega.strftime("%d/%m/%Y") if pedido.fecha_entrega else None,
+                        hora_entrega=pedido.hora_entrega,
+                    )
+                    await email_service.send_pedido_update(template_data_cliente)
+                    logger.info("Email de notificación enviado al cliente %s", cliente.email)
+                except Exception:
+                    logger.exception("Error enviando email al cliente para pedido #%s (no bloquea)", pedido.id)
+
+        # 2. Notificar a la EMPRESA (si tiene email de contacto configurado)
+        if empresa.email_contacto:
+            try:
+                template_data_empresa = EmailTemplateData(
+                    empresa_nombre=empresa.nombre,
+                    empresa_logo=empresa.logo_url,
+                    empresa_color=empresa.color_primario or "#3b82f6",
+                    email_contacto=empresa.email_contacto,
+                    telefono_contacto=empresa.telefono_contacto,
+                    cliente_nombre=f"{pedido.nombre} {pedido.apellido}",
+                    cliente_email=empresa.email_contacto,  # Se envía A la empresa
+                    pedido_id=pedido.numero_pedido,
+                    pedido_estado=nuevo_estado,
+                    pedido_total=float(pedido.total) if pedido.total else None,
+                    pedido_senia=float(pedido.senia) if pedido.senia else None,
+                    pedido_saldo=float(pedido.total - (pedido.senia or 0)) if pedido.total else None,
+                    items=items_data,
+                    fecha_entrega=pedido.fecha_entrega.strftime("%d/%m/%Y") if pedido.fecha_entrega else None,
+                    hora_entrega=pedido.hora_entrega,
+                )
+                await email_service.send_pedido_update(template_data_empresa)
+                logger.info("Email de notificación enviado a la empresa %s", empresa.email_contacto)
+            except Exception:
+                logger.exception("Error enviando email a la empresa para pedido #%s (no bloquea)", pedido.id)
 
     except Exception:
-        logger.exception("Error enviando notificación de email para pedido #%s", pedido.id)
+        logger.exception("Error en notificación de email para pedido #%s (no bloquea el flujo)", pedido.id)
 
 
 async def get_pedidos_asignados_repartidor(

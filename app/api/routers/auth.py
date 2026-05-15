@@ -104,8 +104,16 @@ async def login(
 
     logger.info("User logged in: id=%s, email=%s, empresa_id=%s", user.id, user.email, user.empresa_id)
 
+    # Smart redirect based on role
+    if user.rol == "repartidor":
+        redirect_url = "/mis-entregas"
+    elif user.rol == "vendedor":
+        redirect_url = "/nuevo-pedido"
+    else:
+        redirect_url = "/dashboard"
+
     response = HTMLResponse(content="", status_code=status.HTTP_200_OK)
-    response.headers["HX-Redirect"] = "/dashboard"
+    response.headers["HX-Redirect"] = redirect_url
     auth_service.build_auth_cookies(response, user.id, user.empresa_id)
     return response
 

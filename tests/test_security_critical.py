@@ -90,19 +90,20 @@ class TestCSRFProtection:
         assert token1 != token2
 
     async def test_csrf_exempt_paths_contiene_login(self):
-        """CSRF_EXEMPT_PATHS debe incluir /api/login."""
-        from app.csrf import CSRF_EXEMPT_PATHS
-        
-        assert "/api/login" in CSRF_EXEMPT_PATHS
-        assert "/api/logout" in CSRF_EXEMPT_PATHS
-        assert "/api/refresh-token" in CSRF_EXEMPT_PATHS
-        assert "/health" in CSRF_EXEMPT_PATHS
+        """CSRF_EXEMPT_PREFIXES debe incluir /api/login y CSRF_EXEMPT_EXACT debe incluir /health."""
+        from app.csrf import CSRF_EXEMPT_PREFIXES, CSRF_EXEMPT_EXACT
+
+        assert any("/api/login".startswith(p) for p in CSRF_EXEMPT_PREFIXES)
+        assert any("/api/logout".startswith(p) for p in CSRF_EXEMPT_PREFIXES)
+        assert any("/api/refresh-token".startswith(p) for p in CSRF_EXEMPT_PREFIXES)
+        assert "/health" in CSRF_EXEMPT_EXACT
 
     async def test_csrf_exempt_paths_no_contiene_guardar_pedido(self):
-        """CSRF_EXEMPT_PATHS NO debe incluir /guardar-pedido."""
-        from app.csrf import CSRF_EXEMPT_PATHS
-        
-        assert "/guardar-pedido" not in CSRF_EXEMPT_PATHS
+        """CSRF_EXEMPT_EXACT NO debe incluir /guardar-pedido y no debe matchear ningún prefix."""
+        from app.csrf import CSRF_EXEMPT_PREFIXES, CSRF_EXEMPT_EXACT
+
+        assert "/guardar-pedido" not in CSRF_EXEMPT_EXACT
+        assert not any("/guardar-pedido".startswith(p) for p in CSRF_EXEMPT_PREFIXES)
 
     async def test_csrf_middleware_existe_en_produccion(self):
         """CSRFMiddleware debe estar registrado en producción."""
@@ -133,10 +134,10 @@ class TestAdminAuthorization:
     """Tests para get_current_admin_user."""
 
     async def test_usuario_normal_no_accede_admin_usuarios(self, client, db_session, empresa_a):
-        """Usuario normal (is_admin=False) debe ser rechazado en /admin/usuarios."""
+        """Usuario normal (is_admin=False) debe ser rechazado en /admin."""
         from app.auth import get_password_hash
         from app.models import Usuario
-        
+
         # Crear usuario normal (no admin)
         normal = Usuario(
             email="normal@test.com",
@@ -149,16 +150,16 @@ class TestAdminAuthorization:
         )
         db_session.add(normal)
         await db_session.commit()
-        
+
         # Login como usuario normal
         await client.post(
             "/api/login",
             data={"email": "normal@test.com", "password": "Normal123!"},
         )
-        
+
         # Intentar acceder a admin
-        response = await client.get("/admin/usuarios")
-        
+        response = await client.get("/admin")
+
         # Debe ser rechazado (403 o redirigir)
         assert response.status_code in [302, 303, 403]
 

@@ -88,6 +88,49 @@ async def entregas_page(
     )
 
 
+@router.post("/api/pedido/{pedido_id}/cambiar-estado")
+async def cambiar_estado_pedido(
+    pedido_id: int,
+    request: Request,
+    nuevo_estado: str = Form(...),
+    nota: str = Form(""),
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Cambia el estado de un pedido (entregado, no_entregado, en_camino, etc.) con validación."""
+    try:
+        pedido = await pedido_service.cambiar_estado_entrega(
+            db, pedido_id, nuevo_estado, current_user.id, current_user.empresa_id, nota or None
+        )
+    except InvalidEstadoTransition as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
+
+    logger.info(
+        "Pedido #%s: estado cambiado a '%s' por usuario #%s",
+        pedido_id,
+        nuevo_estado,
+        current_user.id,
+    )
+
+    if nuevo_estado == "entregado":
+        return templates.TemplateResponse(
+            request,
+            "partials/entrega_resultado.html",
+            {"mensaje": "✅ Pedido #" + str(pedido.numero_pedido) + " entregado correctamente", "tipo": "success"},
+        )
+    elif nuevo_estado == "no_entregado":
+        return templates.TemplateResponse(
+            request,
+            "partials/entrega_resultado.html",
+            {"mensaje": "📋 Pedido #" + str(pedido.numero_pedido) + " marcado como no entregado", "tipo": "warning"},
+        )
+    else:
+        return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Trigger": "estadoCambiado"})
+
+
 @router.post("/api/pedido/{pedido_id}/marcar-entregado")
 async def marcar_entregado(
     pedido_id: int,
@@ -95,17 +138,62 @@ async def marcar_entregado(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    pedido = await pedido_service.get_pedido_by_id(db, pedido_id, current_user.empresa_id)
-    if pedido is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+    """Marca un pedido como entregado usando la state machine (con validación y email)."""
+    try:
+        pedido = await pedido_service.cambiar_estado_entrega(
+            db, pedido_id, "entregado", current_user.id, current_user.empresa_id
+        )
+    except InvalidEstadoTransition as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
 
-    pedido.estado = "entregado"
-    await db.commit()
+    logger.info(
+        "Pedido #%s marcado como entregado por usuario #%s (empresa %s)",
+        pedido_id,
+        current_user.id,
+        current_user.empresa_id,
+    )
 
-    return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Trigger": "pedidoEntregado"})
+    return templates.TemplateResponse(
+        request,
+        "partials/entrega_resultado.html",
+        {"mensaje": f"✅ Pedido #{pedido.numero_pedido} entregado correctamente", "tipo": "success"},
+    )
 
 
-@router.post("/api/pedido/{pedido_id}/cancelar")
+@router.post("/api/pedido/{pedido_id}/no-entregado")
+async def no_entregado(
+    pedido_id: int,
+    request: Request,
+    nota: str = Form(""),
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Marca un pedido como no entregado (cliente ausente, dirección incorrecta, etc.)."""
+    try:
+        pedido = await pedido_service.cambiar_estado_entrega(
+            db, pedido_id, "no_entregado", current_user.id, current_user.empresa_id, nota or None
+        )
+    except InvalidEstadoTransition as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
+
+    logger.info(
+        "Pedido #%s marcado como NO entregado por usuario #%s (empresa %s)",
+        pedido_id,
+        current_user.id,
+        current_user.empresa_id,
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "partials/entrega_resultado.html",
+        {"mensaje": f"📋 Pedido #{pedido.numero_pedido} marcado como no entregado", "tipo": "warning"},
+    )
 async def cancelar_pedido(
     pedido_id: int,
     request: Request,
@@ -213,11 +301,22 @@ async def editar_pedido_guardar(  # noqa: PLR0913
         except (json.JSONDecodeError, ValueError):
             nuevos_items = None
 
-    # Si se está cancelando el pedido, restaurar stock
+    # Si se está cancelando el pedido, restaurar stock y retornar
     if estado == "cancelado" and pedido_actual.estado != "cancelado":
         pedido = await pedido_service.cancelar_pedido(db, pedido_id, current_user.empresa_id)
         if pedido is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+        logger.info(
+            "Pedido #%s cancelado por usuario #%s (empresa %s) — stock restaurado",
+            pedido.id,
+            current_user.id,
+            current_user.empresa_id,
+        )
+        return templates.TemplateResponse(
+            request,
+            "partials/success.html",
+            {"mensaje": f"Pedido #{pedido.numero_pedido} cancelado correctamente"},
+        )
     elif nuevos_items is not None:
         # Flujo con items editables: actualizar items, stock y total
         try:
@@ -715,19 +814,16 @@ async def mis_entregas(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    """Vista del repartidor: pedidos asignados del día."""
+    """Vista mobile-first del repartidor: pedidos asignados con acciones de entrega."""
     pedidos = await pedido_service.get_pedidos_asignados_repartidor(
         db, current_user.id, current_user.empresa_id
     )
     return templates.TemplateResponse(
         request,
-        "entregas.html",
+        "mis_entregas.html",
         {
             "user": current_user,
             "pedidos": pedidos,
-            "fecha": datetime.now(UTC).strftime("%Y-%m-%d"),
-            "hoy": datetime.now(UTC).strftime("%Y-%m-%d"),
-            "es_repartidor": True,
         },
     )
 

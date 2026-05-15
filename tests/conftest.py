@@ -243,6 +243,7 @@ async def pedido_empresa_a_2(db_session, empresa_a, user_empresa_a):
         empresa_id=empresa_a.id,
         usuario_id=user_empresa_a.id,
         estado="pendiente",
+        numero_pedido=2,  # Explicit to avoid UNIQUE constraint collision with pedido_empresa_a
     )
     db_session.add(pedido)
     await db_session.commit()

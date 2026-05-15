@@ -10,8 +10,10 @@
             <label class="text-sm text-gray-600" for="fecha-filtro">📅 Fecha:</label>
             <input type="date" id="fecha-filtro" value="{{ fecha }}" min="{{ hoy }}"
                    class="border rounded px-3 py-1 text-sm"
-                   hx-get="/entregas" hx-vals='js:{fecha: document.getElementById("fecha-filtro").value}'
-                   hx-target="#lista-entregas" hx-swap="innerHTML"
+                   hx-get="/entregas"
+                   hx-include="#fecha-filtro"
+                   hx-target="#lista-entregas"
+                   hx-swap="innerHTML"
                    hx-trigger="change">
         </div>
     </div>
@@ -25,7 +27,19 @@
                     <div class="flex-1">
                         <div class="flex items-center gap-3 mb-2">
                             <span class="font-bold text-lg">#{{ pedido.numero_pedido }}</span>
-                            <span class="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">pendiente</span>
+                            <span class="px-2 py-1 rounded text-xs
+                                {% if pedido.estado == 'pendiente' %}bg-yellow-100 text-yellow-800
+                                {% elif pedido.estado == 'asignado' %}bg-blue-100 text-blue-800
+                                {% elif pedido.estado == 'en_camino' %}bg-orange-100 text-orange-800
+                                {% elif pedido.estado == 'entregado' %}bg-green-100 text-green-800
+                                {% elif pedido.estado == 'no_entregado' %}bg-red-100 text-red-800
+                                {% elif pedido.estado == 'cancelado' %}bg-gray-100 text-gray-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ pedido.estado|replace('_', ' ')|capitalize }}
+                            </span>
+                            {% if pedido.repartidor %}
+                            <span class="text-xs text-gray-500">→ {{ pedido.repartidor.nombre }} {{ pedido.repartidor.apellido }}</span>
+                            {% endif %}
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                             <div>
@@ -33,10 +47,12 @@
                                 {{ pedido.nombre }} {{ pedido.apellido }}
                             </div>
                             <div>
-                                <span class="font-semibold">📱</span> {{ pedido.celular }}
+                                <span class="font-semibold">📱</span>
+                                <a href="tel:{{ pedido.celular }}" class="text-blue-600 hover:underline">{{ pedido.celular }}</a>
                             </div>
                             <div>
-                                <span class="font-semibold">📍</span> {{ pedido.direccion }}
+                                <span class="font-semibold">📍</span>
+                                <a href="https://maps.google.com/?q={{ pedido.direccion | urlencode }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ pedido.direccion }}</a>
                             </div>
                             <div>
                                 <span class="font-semibold">⏰</span> {{ pedido.hora_entrega }}
@@ -51,16 +67,9 @@
                         <div class="flex gap-2 mt-2 justify-end">
                             <a href="/pedido/{{ pedido.id }}/imprimir" target="_blank"
                                class="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded transition-colors"
-                               title="Imprimir remito para el camionero">
+                               title="Imprimir remito">
                                 🖨️ Imprimir
                             </a>
-                            <button hx-post="/api/pedido/{{ pedido.id }}/marcar-entregado"
-                                    hx-target="#pedido-{{ pedido.id }}"
-                                    hx-swap="outerHTML swap:0.5s"
-                                    hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como entregado?"
-                                    class="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded transition-colors">
-                                ✅ Entregado
-                            </button>
                         </div>
                     </div>
                 </div>

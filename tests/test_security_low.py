@@ -143,13 +143,13 @@ class TestTemplateRendering:
         assert "registro" in response.text.lower() or "usuario" in response.text.lower()
 
     async def test_admin_usuarios_page_renders(self, client, user_empresa_a):
-        """/admin/usuarios debe listar usuarios."""
+        """/admin debe listar usuarios."""
         await client.post(
             "/api/login",
             data={"email": "admin@empresa-a.com", "password": "Test123!"},
         )
 
-        response = await client.get("/admin/usuarios")
+        response = await client.get("/admin")
 
         assert response.status_code == 200
         assert "usuarios" in response.text.lower() or "admin" in response.text.lower()
