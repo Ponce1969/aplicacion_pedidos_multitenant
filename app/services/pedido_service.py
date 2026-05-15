@@ -396,6 +396,39 @@ async def asignar_repartidor(
     return pedido
 
 
+async def desasignar_repartidor(
+    db: AsyncSession,
+    pedido_id: int,
+    usuario_id: int,
+    empresa_id: int,
+) -> Pedido | None:
+    """Quita el repartidor de un pedido y revierte el estado a pendiente si estaba asignado."""
+    pedido = await pedido_repo.get_by_id(db, pedido_id, empresa_id)
+    if pedido is None:
+        return None
+
+    estado_anterior = pedido.estado
+    pedido.repartidor_id = None
+
+    # Si estaba asignado, volver a pendiente
+    if pedido.estado == "asignado":
+        pedido.estado = "pendiente"
+
+    await entrega_repo.create(
+        db,
+        pedido_id=pedido_id,
+        usuario_id=usuario_id,
+        empresa_id=empresa_id,
+        estado_anterior=estado_anterior,
+        estado_nuevo=pedido.estado,
+        nota="Repartidor desasignado",
+    )
+
+    await db.commit()
+    await db.refresh(pedido)
+    return pedido
+
+
 async def cambiar_estado_entrega(
     db: AsyncSession,
     pedido_id: int,

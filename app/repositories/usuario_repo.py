@@ -31,6 +31,18 @@ async def create(db: AsyncSession, usuario: Usuario) -> Usuario:
     return usuario
 
 
+async def get_repartidores(db: AsyncSession, empresa_id: int) -> list[Usuario]:
+    """Obtiene usuarios activos con rol repartidor de una empresa."""
+    result = await db.execute(
+        select(Usuario).where(
+            Usuario.empresa_id == empresa_id,
+            Usuario.rol == "repartidor",
+            Usuario.is_active == True,  # noqa: E712
+        ).order_by(Usuario.nombre, Usuario.apellido),
+    )
+    return list(result.scalars().all())
+
+
 async def list_all(db: AsyncSession, empresa_id: int) -> list[Usuario]:
     result = await db.execute(
         select(Usuario)

@@ -69,11 +69,14 @@ async def entregas_page(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
+    from app.repositories import usuario_repo
+
     fecha_filtro: date | None = None
     if fecha:
         fecha_filtro = datetime.strptime(fecha, "%Y-%m-%d").replace(tzinfo=UTC).date()
 
     pedidos = await pedido_service.get_pedidos_pendientes(db, current_user.empresa_id, fecha_filtro)
+    repartidores = await usuario_repo.get_repartidores(db, current_user.empresa_id)
     hoy = datetime.now(UTC).strftime("%Y-%m-%d")
 
     return templates.TemplateResponse(
@@ -82,6 +85,7 @@ async def entregas_page(
         {
             "user": current_user,
             "pedidos": pedidos,
+            "repartidores": repartidores,
             "fecha": fecha or hoy,
             "hoy": hoy,
         },
@@ -836,15 +840,14 @@ async def asignar_repartidor(
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    """Admin asigna un repartidor a un pedido."""
-    # Verificar que el repartidor exista y sea de la misma empresa
+    """Admin asigna un repartidor a un pedido. Retorna el card actualizado via HTMX."""
     from app.repositories import usuario_repo
 
-    repartidor = await usuario_repo.get_by_id(db, repartidor_id, current_user.empresa_id)
-    if repartidor is None:
+    repartidor_obj = await usuario_repo.get_by_id(db, repartidor_id, current_user.empresa_id)
+    if repartidor_obj is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repartidor no encontrado")
 
-    if repartidor.rol not in ("repartidor", "admin"):
+    if repartidor_obj.rol not in ("repartidor", "admin"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El usuario asignado debe tener rol 'repartidor' o 'admin'",
@@ -863,7 +866,42 @@ async def asignar_repartidor(
         current_user.id,
     )
 
-    return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Trigger": "repartidorAsignado"})
+    repartidores = await usuario_repo.get_repartidores(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/entrega_card.html",
+        {"pedido": pedido, "repartidores": repartidores},
+    )
+
+
+@router.post("/api/pedido/{pedido_id}/desasignar-repartidor")
+async def desasignar_repartidor(
+    pedido_id: int,
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Admin quita el repartidor de un pedido. Retorna el card actualizado via HTMX."""
+    from app.repositories import usuario_repo
+
+    pedido = await pedido_service.desasignar_repartidor(
+        db, pedido_id, current_user.id, current_user.empresa_id
+    )
+    if pedido is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    logger.info(
+        "Repartidor desasignado del pedido #%s por usuario #%s",
+        pedido_id,
+        current_user.id,
+    )
+
+    repartidores = await usuario_repo.get_repartidores(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/entrega_card.html",
+        {"pedido": pedido, "repartidores": repartidores},
+    )
 
 
 @router.post("/api/pedido/{pedido_id}/cambiar-estado")
