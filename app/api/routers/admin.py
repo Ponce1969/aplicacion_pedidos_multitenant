@@ -500,6 +500,240 @@ async def toggle_producto(
     )
 
 
+# ==================== FLETEROS ====================
+
+
+@router.get("/admin/tab/fleteros", response_class=HTMLResponse)
+async def tab_fleteros(
+    request: Request,
+    current_user: Usuario = Depends(get_current_admin_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """HTMX partial: tab de gestión de fleteros."""
+    from app.services.queries.fletero_service import get_fleteros_con_estado
+
+    fleteros = await get_fleteros_con_estado(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_fleteros.html",
+        {"user": current_user, "fleteros": fleteros},
+    )
+
+
+@router.get("/admin/fleteros/nuevo", response_class=HTMLResponse)
+async def nuevo_fletero_form(
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+) -> HTMLResponse:
+    """Muestra formulario para crear un nuevo fletero. Solo owner."""
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/fletero_form.html",
+        {"user": current_user, "fletero_edit": None, "error": None},
+    )
+
+
+@router.post("/admin/fleteros/crear", response_class=HTMLResponse)
+async def crear_fletero(
+    request: Request,
+    nombre: str = Form(...),
+    apellido: str = Form(...),
+    celular: str = Form(...),
+    vehiculo: str = Form(""),
+    ci: str = Form(""),
+    password: str = Form(...),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Crea un nuevo fletero. Solo owner. Auto-genera el email."""
+    from app.auth import get_password_hash
+    from app.services.queries.fletero_service import get_fleteros_con_estado
+
+    # Auto-generar email: celular@empresa-slug.com
+    config = await empresa_repo.get_by_id(db, current_user.empresa_id)
+    slug = config.slug if config else f"empresa{current_user.empresa_id}"
+    # Normalizar celular para email: sacamos espacios, guiones, etc.
+    celular_limpio = celular.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    email_autogenerado = f"{celular_limpio}@{slug}.fletero"
+
+    # Verificar email duplicado
+    existing = await usuario_repo.get_by_email(db, email_autogenerado, current_user.empresa_id)
+    if existing:
+        # Intentar con apellido
+        email_autogenerado = f"{celular_limpio}.{apellido.strip().lower()}@{slug}.fletero"
+        existing = await usuario_repo.get_by_email(db, email_autogenerado, current_user.empresa_id)
+        if existing:
+            return templates.TemplateResponse(
+                request,
+                "admin/partials/fletero_form.html",
+                {"user": current_user, "fletero_edit": None,
+                 "error": f"Ya existe un fletero con celular {celular}. Contactá al administrador."},
+            )
+
+    # Validar CI si se proporciona
+    ci_value = ci.strip() if ci.strip() else None
+    if ci_value:
+        ci_normalizado = normalizar_rut(ci_value)
+        if not validar_rut(ci_normalizado):
+            return templates.TemplateResponse(
+                request,
+                "admin/partials/fletero_form.html",
+                {"user": current_user, "fletero_edit": None,
+                 "error": f"CI/RUT inválido: {ci_value}"},
+            )
+        ci_value = ci_normalizado
+
+    nuevo = Usuario(
+        empresa_id=current_user.empresa_id,
+        email=email_autogenerado,
+        nombre=nombre.strip(),
+        apellido=apellido.strip(),
+        password_hash=get_password_hash(password),
+        rol="repartidor",
+        is_admin=False,
+        is_active=True,
+        celular=celular.strip(),
+        vehiculo=vehiculo.strip() or None,
+        ci=ci_value,
+    )
+    await usuario_repo.create(db, nuevo)
+    logger.info("Fletero '%s %s' creado por owner #%s (email=%s)", nombre, apellido, current_user.id, email_autogenerado)
+
+    fleteros = await get_fleteros_con_estado(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_fleteros.html",
+        {"user": current_user, "fleteros": fleteros},
+    )
+
+
+@router.get("/admin/fleteros/{fletero_id}/editar", response_class=HTMLResponse)
+async def editar_fletero_form(
+    fletero_id: int,
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Muestra formulario para editar un fletero."""
+    fletero = await usuario_repo.get_by_id(db, fletero_id, current_user.empresa_id)
+    if fletero is None or fletero.rol != "repartidor":
+        raise HTTPException(status_code=404, detail="Fletero no encontrado")
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/fletero_form.html",
+        {"user": current_user, "fletero_edit": fletero, "error": None},
+    )
+
+
+@router.post("/admin/fleteros/{fletero_id}/editar", response_class=HTMLResponse)
+async def editar_fletero_guardar(
+    fletero_id: int,
+    request: Request,
+    nombre: str = Form(...),
+    apellido: str = Form(...),
+    celular: str = Form(...),
+    vehiculo: str = Form(""),
+    ci: str = Form(""),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Guarda cambios en un fletero."""
+    from app.services.queries.fletero_service import get_fleteros_con_estado
+
+    fletero = await usuario_repo.get_by_id(db, fletero_id, current_user.empresa_id)
+    if fletero is None or fletero.rol != "repartidor":
+        raise HTTPException(status_code=404, detail="Fletero no encontrado")
+
+    # Validar CI si se proporciona
+    ci_value = ci.strip() if ci.strip() else None
+    if ci_value:
+        ci_normalizado = normalizar_rut(ci_value)
+        if not validar_rut(ci_normalizado):
+            return templates.TemplateResponse(
+                request,
+                "admin/partials/fletero_form.html",
+                {"user": current_user, "fletero_edit": fletero,
+                 "error": f"CI/RUT inválido: {ci_value}"},
+            )
+        ci_value = ci_normalizado
+
+    fletero.nombre = nombre.strip()
+    fletero.apellido = apellido.strip()
+    fletero.celular = celular.strip()
+    fletero.vehiculo = vehiculo.strip() or None
+    fletero.ci = ci_value
+
+    await db.commit()
+    await db.refresh(fletero)
+    logger.info("Fletero #%s editado por owner #%s", fletero_id, current_user.id)
+
+    fleteros = await get_fleteros_con_estado(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_fleteros.html",
+        {"user": current_user, "fleteros": fleteros},
+    )
+
+
+@router.post("/admin/fleteros/{fletero_id}/toggle", response_class=HTMLResponse)
+async def toggle_fletero(
+    fletero_id: int,
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Activa o desactiva un fletero (soft delete)."""
+    from app.services.queries.fletero_service import get_fleteros_con_estado
+
+    fletero = await usuario_repo.get_by_id(db, fletero_id, current_user.empresa_id)
+    if fletero is None or fletero.rol != "repartidor":
+        raise HTTPException(status_code=404, detail="Fletero no encontrado")
+
+    if fletero.is_active:
+        fletero.is_active = False
+        logger.info("Fletero #%s desactivado por owner #%s", fletero_id, current_user.id)
+    else:
+        fletero.is_active = True
+        logger.info("Fletero #%s reactivado por owner #%s", fletero_id, current_user.id)
+
+    await db.commit()
+
+    fleteros = await get_fleteros_con_estado(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_fleteros.html",
+        {"user": current_user, "fleteros": fleteros},
+    )
+
+
+@router.post("/admin/fleteros/{fletero_id}/reset-password", response_class=HTMLResponse)
+async def reset_fletero_password(
+    fletero_id: int,
+    request: Request,
+    new_password: str = Form(...),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Resetea la contraseña de un fletero."""
+    from app.auth import get_password_hash
+    from app.services.queries.fletero_service import get_fleteros_con_estado
+
+    fletero = await usuario_repo.get_by_id(db, fletero_id, current_user.empresa_id)
+    if fletero is None or fletero.rol != "repartidor":
+        raise HTTPException(status_code=404, detail="Fletero no encontrado")
+
+    fletero.password_hash = get_password_hash(new_password)
+    await db.commit()
+    logger.info("Contraseña reseteada para fletero #%s por owner #%s", fletero_id, current_user.id)
+
+    fleteros = await get_fleteros_con_estado(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_fleteros.html",
+        {"user": current_user, "fleteros": fleteros},
+    )
+
+
 # ==================== EXPORTACIÓN CSV ====================
 
 

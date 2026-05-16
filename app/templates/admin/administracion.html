@@ -24,6 +24,11 @@
                     data-tab="catalogo">
                 📦 Catálogo
             </button>
+            <button onclick="switchTab('fleteros')"
+                    class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700"
+                    data-tab="fleteros">
+                🚚 Fleteros
+            </button>
         </nav>
     </div>
 
@@ -52,6 +57,7 @@ function switchTab(tabName) {
         empresa: '/admin/tab/empresa',
         usuarios: '/admin/tab/usuarios',
         catalogo: '/admin/tab/catalogo',
+        fleteros: '/admin/tab/fleteros',
     };
     htmx.ajax('GET', tabUrls[tabName], '#tab-content');
 }

@@ -60,6 +60,9 @@ class Usuario(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     rol: Mapped[str] = mapped_column(String(20), default="operador", server_default="operador")
+    vehiculo: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)
+    celular: Mapped[str | None] = mapped_column(String(30), nullable=True, default=None)
+    ci: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)  # Cédula de identidad
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     ultimo_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 

@@ -1,0 +1,94 @@
+<div>
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">🚚 Fleteros</h3>
+        {% if user.rol == 'owner' %}
+        <button onclick="htmx.ajax('GET', '/admin/fleteros/nuevo', '#fletero-form-area')"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
+            ➕ Nuevo Fletero
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Form area for create -->
+    <div id="fletero-form-area"></div>
+
+    <!-- Fleteros table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teléfono</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehículo</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Disponibilidad</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for f in fleteros %}
+                <tr class="{% if not f.is_active %}bg-gray-50 opacity-60{% endif %} hover:bg-blue-50 transition-colors">
+                    <td class="px-4 py-3 text-sm font-medium">
+                        {{ f.nombre }} {{ f.apellido }}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600">
+                        {% if f.celular %}
+                        <a href="tel:{{ f.celular }}" class="text-blue-600 hover:underline">{{ f.celular }}</a>
+                        {% else %}
+                        <span class="text-gray-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600">
+                        {% if f.vehiculo %}
+                        {{ f.vehiculo }}
+                        {% else %}
+                        <span class="text-gray-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if f.is_active %}
+                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Activo</span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if f.is_active %}
+                            {% if f.estado == "En viaje" %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">🚚 En viaje</span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">✅ Disponible</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="text-xs text-gray-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        {% if user.rol == 'owner' %}
+                        <div class="flex gap-1 justify-end">
+                            <button onclick="htmx.ajax('GET', '/admin/fleteros/{{ f.id }}/editar', '#fletero-form-area')"
+                                    class="text-blue-500 hover:text-blue-700 text-sm" title="Editar">✏️</button>
+                            <form hx-post="/admin/fleteros/{{ f.id }}/toggle" hx-target="#tab-content" hx-swap="innerHTML"
+                                  style="display:inline">
+                                {% if f.is_active %}
+                                <button type="submit" class="text-red-500 hover:text-red-700 text-sm" title="Desactivar">🚫</button>
+                                {% else %}
+                                <button type="submit" class="text-green-500 hover:text-green-700 text-sm" title="Reactivar">✅</button>
+                                {% endif %}
+                            </form>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if not fleteros %}
+        <div class="p-6 text-center text-gray-500">
+            <div class="text-4xl mb-2">🚚</div>
+            <p class="font-medium">No hay fleteros registrados</p>
+            <p class="text-sm mt-1">Creá el primer fletero para empezar a asignar entregas.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
