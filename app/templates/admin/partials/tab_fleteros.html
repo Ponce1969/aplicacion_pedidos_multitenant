@@ -1,8 +1,10 @@
 <div>
     <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-800">🚚 Fleteros</h3>
-        {% if user.rol == 'owner' %}
-        <button onclick="htmx.ajax('GET', '/admin/fleteros/nuevo', '#fletero-form-area')"
+        {% if user.rol in ('owner', 'admin') %}
+        <button hx-get="/admin/fleteros/nuevo"
+                hx-target="#fletero-form-area"
+                hx-swap="innerHTML"
                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
             ➕ Nuevo Fletero
         </button>
