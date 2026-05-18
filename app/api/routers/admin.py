@@ -160,7 +160,370 @@ async def actualizar_configuracion(
 @router.get("/admin/usuarios/nuevo", response_class=HTMLResponse)
 async def nuevo_usuario_form(
     request: Request,
-current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+) -> HTMLResponse:
+    """Muestra formulario para crear un nuevo usuario. Solo owner."""
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/usuario_form.html",
+        {"user": current_user, "usuario_edit": None, "valid_roles": VALID_ROLES, "error": None},
+    )
+
+
+@router.post("/admin/usuarios/crear", response_class=HTMLResponse)
+async def crear_usuario(
+    request: Request,
+    email: str = Form(...),
+    nombre: str = Form(...),
+    apellido: str = Form(...),
+    password: str = Form(...),
+    rol: str = Form("vendedor"),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Crea un nuevo usuario. Solo owner."""
+    from app.auth import get_password_hash
+
+    # Validar rol
+    if rol not in VALID_ROLES:
+        return templates.TemplateResponse(
+            request,
+            "admin/partials/usuario_form.html",
+            {"user": current_user, "usuario_edit": None, "valid_roles": VALID_ROLES,
+             "error": f"Rol inválido: {rol}"},
+        )
+
+    # Verificar email duplicado
+    existing = await usuario_repo.get_by_email(db, email.strip(), current_user.empresa_id)
+    if existing:
+        return templates.TemplateResponse(
+            request,
+            "admin/partials/usuario_form.html",
+            {"user": current_user, "usuario_edit": None, "valid_roles": VALID_ROLES,
+             "error": f"Ya existe un usuario con email {email}"},
+        )
+
+    nuevo = Usuario(
+        empresa_id=current_user.empresa_id,
+        email=email.strip().lower(),
+        nombre=nombre.strip(),
+        apellido=apellido.strip(),
+        password_hash=get_password_hash(password),
+        rol=rol,
+        is_admin=(rol in (ROLE_OWNER, ROLE_ADMIN)),
+        is_active=True,
+    )
+    saved = await usuario_repo.create(db, nuevo)
+    logger.info("Usuario #%s creado por owner #%s (rol=%s)", saved.id, current_user.id, rol)
+
+    # Retornar la tabla actualizada de usuarios
+    usuarios = await usuario_repo.list_all(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_usuarios.html",
+        {"user": current_user, "usuarios": usuarios, "valid_roles": VALID_ROLES},
+    )
+
+
+@router.get("/admin/usuarios/{user_id}/editar", response_class=HTMLResponse)
+async def editar_usuario_form(
+    user_id: int,
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Muestra formulario para editar un usuario."""
+    usuario_edit = await usuario_repo.get_by_id(db, user_id, current_user.empresa_id)
+    if usuario_edit is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/usuario_form.html",
+        {"user": current_user, "usuario_edit": usuario_edit, "valid_roles": VALID_ROLES, "error": None},
+    )
+
+
+@router.post("/admin/usuarios/{user_id}/editar", response_class=HTMLResponse)
+async def editar_usuario_guardar(
+    user_id: int,
+    request: Request,
+    nombre: str = Form(...),
+    apellido: str = Form(...),
+    email: str = Form(...),
+    rol: str = Form("vendedor"),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Guarda cambios en un usuario."""
+    usuario = await usuario_repo.get_by_id(db, user_id, current_user.empresa_id)
+    if usuario is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Solo owner puede cambiar roles
+    if current_user.rol == ROLE_OWNER and rol in VALID_ROLES:
+        usuario.rol = rol
+        usuario.is_admin = (rol in (ROLE_OWNER, ROLE_ADMIN))
+
+    usuario.nombre = nombre.strip()
+    usuario.apellido = apellido.strip()
+    usuario.email = email.strip().lower()
+
+    await db.commit()
+    await db.refresh(usuario)
+    logger.info("Usuario #%s editado por %s #%s", user_id, current_user.rol, current_user.id)
+
+    usuarios = await usuario_repo.list_all(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_usuarios.html",
+        {"user": current_user, "usuarios": usuarios, "valid_roles": VALID_ROLES},
+    )
+
+
+@router.post("/admin/usuarios/{user_id}/toggle", response_class=HTMLResponse)
+async def toggle_usuario(
+    user_id: int,
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Activa o desactiva un usuario. Solo owner."""
+    usuario = await usuario_repo.get_by_id(db, user_id, current_user.empresa_id)
+    if usuario is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # No desactivarse a sí mismo
+    if usuario.id == current_user.id:
+        raise HTTPException(status_code=400, detail="No podés desactivarte a vos mismo")
+
+    if usuario.is_active:
+        await usuario_repo.deactivate(db, user_id, current_user.empresa_id)
+        logger.info("Usuario #%s desactivado por owner #%s", user_id, current_user.id)
+    else:
+        await usuario_repo.activate(db, user_id, current_user.empresa_id)
+        logger.info("Usuario #%s reactivado por owner #%s", user_id, current_user.id)
+
+    usuarios = await usuario_repo.list_all(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_usuarios.html",
+        {"user": current_user, "usuarios": usuarios, "valid_roles": VALID_ROLES},
+    )
+
+
+@router.post("/admin/usuarios/{user_id}/reset-password", response_class=HTMLResponse)
+async def reset_password(
+    user_id: int,
+    request: Request,
+    new_password: str = Form(...),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Resetea la contraseña de un usuario. Solo owner."""
+    from app.auth import get_password_hash
+
+    usuario = await usuario_repo.get_by_id(db, user_id, current_user.empresa_id)
+    if usuario is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    usuario.password_hash = get_password_hash(new_password)
+    await db.commit()
+    logger.info("Password reset for user #%s by owner #%s", user_id, current_user.id)
+
+    usuarios = await usuario_repo.list_all(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_usuarios.html",
+        {"user": current_user, "usuarios": usuarios, "valid_roles": VALID_ROLES},
+    )
+
+
+# ==================== CATÁLOGO DE PRODUCTOS ====================
+
+
+@router.get("/admin/tab/catalogo", response_class=HTMLResponse)
+async def tab_catalogo(
+    request: Request,
+    q: str = "",
+    current_user: Usuario = Depends(get_current_admin_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """HTMX partial: tab de catálogo de productos."""
+    if q and len(q) >= 2:
+        all_prods = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+        productos = [p for p in all_prods if q.lower() in p.nombre.lower() or (p.sku and q.lower() in p.sku.lower())]
+    else:
+        productos = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_catalogo.html",
+        {"user": current_user, "productos": productos, "q": q},
+    )
+
+
+@router.get("/admin/productos/nuevo", response_class=HTMLResponse)
+async def nuevo_producto_form(
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+) -> HTMLResponse:
+    """Muestra formulario para crear un nuevo producto."""
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/producto_form.html",
+        {"user": current_user, "producto": None, "error": None},
+    )
+
+
+@router.post("/admin/productos/crear", response_class=HTMLResponse)
+async def crear_producto(
+    request: Request,
+    nombre: str = Form(...),
+    sku: str = Form(""),
+    precio_base: float = Form(0),
+    unidad_medida: str = Form("unidad"),
+    stock: str = Form(""),
+    descripcion: str = Form(""),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Crea un nuevo producto."""
+    from decimal import Decimal as D
+
+    stock_value = D(stock) if stock.strip() else None
+
+    producto = Producto(
+        empresa_id=current_user.empresa_id,
+        nombre=nombre.strip(),
+        sku=sku.strip() or None,
+        precio_base=D(str(precio_base)),
+        unidad_medida=unidad_medida,
+        stock=stock_value,
+        descripcion=descripcion.strip() or None,
+        is_active=True,
+    )
+    saved = await producto_repo.create(db, producto)
+    logger.info("Producto '%s' (#%s) creado por %s #%s", saved.nombre, saved.id, current_user.rol, current_user.id)
+
+    productos = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_catalogo.html",
+        {"user": current_user, "productos": productos, "q": ""},
+    )
+
+
+@router.get("/admin/productos/{producto_id}/editar", response_class=HTMLResponse)
+async def editar_producto_form(
+    producto_id: int,
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Muestra formulario para editar un producto."""
+    producto = await producto_repo.get_by_id(db, producto_id, current_user.empresa_id)
+    if producto is None:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/producto_form.html",
+        {"user": current_user, "producto": producto, "error": None},
+    )
+
+
+@router.post("/admin/productos/{producto_id}/editar", response_class=HTMLResponse)
+async def editar_producto_guardar(
+    producto_id: int,
+    request: Request,
+    nombre: str = Form(...),
+    sku: str = Form(""),
+    precio_base: float = Form(0),
+    unidad_medida: str = Form("unidad"),
+    stock: str = Form(""),
+    descripcion: str = Form(""),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Guarda cambios en un producto."""
+    from decimal import Decimal as D
+
+    producto = await producto_repo.get_by_id(db, producto_id, current_user.empresa_id)
+    if producto is None:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    producto.nombre = nombre.strip()
+    producto.sku = sku.strip() or None
+    producto.precio_base = D(str(precio_base))
+    producto.unidad_medida = unidad_medida
+    producto.stock = D(stock) if stock.strip() else None
+    producto.descripcion = descripcion.strip() or None
+    # Promover producto JIT a manual al editarlo — completa sus datos
+    if producto.es_automatico:
+        producto.es_automatico = False
+        logger.info("Producto JIT #%s promovido a manual por %s #%s", producto_id, current_user.rol, current_user.id)
+
+    await db.commit()
+    await db.refresh(producto)
+    logger.info("Producto #%s editado por %s #%s", producto_id, current_user.rol, current_user.id)
+
+    productos = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_catalogo.html",
+        {"user": current_user, "productos": productos, "q": ""},
+    )
+
+
+@router.post("/admin/productos/{producto_id}/toggle", response_class=HTMLResponse)
+async def toggle_producto(
+    producto_id: int,
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """Activa o desactiva un producto (soft delete)."""
+    producto = await producto_repo.get_by_id(db, producto_id, current_user.empresa_id)
+    if producto is None:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    if producto.is_active:
+        await producto_repo.deactivate(db, producto_id, current_user.empresa_id)
+        logger.info("Producto #%s desactivado por %s #%s", producto_id, current_user.rol, current_user.id)
+    else:
+        await producto_repo.activate(db, producto_id, current_user.empresa_id)
+        logger.info("Producto #%s reactivado por %s #%s", producto_id, current_user.rol, current_user.id)
+
+    productos = await producto_repo.list_all(db, current_user.empresa_id, include_inactive=True)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_catalogo.html",
+        {"user": current_user, "productos": productos, "q": ""},
+    )
+
+
+# ==================== FLETEROS ====================
+
+
+@router.get("/admin/tab/fleteros", response_class=HTMLResponse)
+async def tab_fleteros(
+    request: Request,
+    current_user: Usuario = Depends(get_current_admin_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> HTMLResponse:
+    """HTMX partial: tab de gestión de fleteros."""
+    from app.services.queries.fletero_service import get_fleteros_con_estado
+
+    fleteros = await get_fleteros_con_estado(db, current_user.empresa_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/partials/tab_fleteros.html",
+        {"user": current_user, "fleteros": fleteros},
+    )
+
+
+@router.get("/admin/fleteros/nuevo", response_class=HTMLResponse)
+async def nuevo_fletero_form(
+    request: Request,
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
 ) -> HTMLResponse:
     """Muestra formulario para crear un nuevo fletero. Owner y Admin."""
     return templates.TemplateResponse(
