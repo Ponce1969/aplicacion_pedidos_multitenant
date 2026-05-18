@@ -60,10 +60,9 @@
                     {% if pedido.estado in ('pendiente', 'asignado', 'en_camino', 'no_entregado') %}
                     <div class="flex gap-1 mt-1">
                         <form hx-post="/api/pedido/{{ pedido.id }}/cambiar-estado"
-                              hx-swap="none"
                               class="inline">
                             <input type="hidden" name="nuevo_estado" value="entregado">
-                            <input type="hidden" name="redirect" value="/pedidos">
+                            <input type="hidden" name="refresh" value="true">
                             <button type="submit"
                                     hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como entregado?"
                                     class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded transition-colors font-medium">
@@ -72,10 +71,9 @@
                         </form>
                         {% if pedido.estado == 'en_camino' %}
                         <form hx-post="/api/pedido/{{ pedido.id }}/cambiar-estado"
-                              hx-swap="none"
                               class="inline">
                             <input type="hidden" name="nuevo_estado" value="no_entregado">
-                            <input type="hidden" name="redirect" value="/pedidos">
+                            <input type="hidden" name="refresh" value="true">
                             <button type="submit"
                                     hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como no entregado?"
                                     class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded transition-colors font-medium">
