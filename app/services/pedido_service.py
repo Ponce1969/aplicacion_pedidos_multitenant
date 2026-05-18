@@ -268,18 +268,37 @@ async def actualizar_items_pedido(
 
 
 async def cancelar_pedido(db: AsyncSession, pedido_id: int, empresa_id: int) -> Pedido | None:
-    """Cancela un pedido y restaura el stock de cada producto."""
-    pedido = await pedido_repo.get_by_id(db, pedido_id, empresa_id)
+    """Cancela un pedido y restaura el stock de cada producto.
+
+    Usa get_by_id_with_items para cargar items+productos en 1 query (evita N+1).
+    Restaurar stock se hace con UPDATE masivo por producto_id en vez de
+    get_by_id + setter por cada item.
+    """
+    from sqlalchemy import update as sa_update
+
+    from app.models import Producto
+
+    pedido = await pedido_repo.get_by_id_with_items(db, pedido_id, empresa_id)
     if pedido is None:
         return None
-    
-    # Restaurar stock de cada item
+
+    # Restaurar stock — UPDATE masivo por producto
+    # Evita N queries individuales (1 get_by_id por item)
+    product_ids_to_restore: dict[int, Decimal] = {}
     for item in pedido.items:
         if item.producto_id is not None:
-            producto = await producto_repo.get_by_id(db, item.producto_id, empresa_id)
-            if producto and producto.stock is not None:
-                producto.stock = producto.stock + item.cantidad
-    
+            product_ids_to_restore[item.producto_id] = (
+                product_ids_to_restore.get(item.producto_id, Decimal(0)) + item.cantidad
+            )
+
+    for producto_id, cantidad in product_ids_to_restore.items():
+        await db.execute(
+            sa_update(Producto)
+            .where(Producto.id == producto_id, Producto.empresa_id == empresa_id)
+            .where(Producto.stock.isnot(None))
+            .values(stock=Producto.stock + cantidad)
+        )
+
     pedido.estado = "cancelado"
     await db.commit()
     await db.refresh(pedido)

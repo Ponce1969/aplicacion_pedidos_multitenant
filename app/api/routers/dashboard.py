@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import Usuario
-from app.repositories import producto_repo, cliente_repo
+from app.repositories import pedido_repo, producto_repo, cliente_repo
 from app.services import pedido_service
 from app.templates_env import get_templates
 
@@ -28,10 +28,17 @@ async def dashboard(
     logger.info("Dashboard accessed by user_id=%s (empresa_id=%s)", current_user.id, current_user.empresa_id)
 
     hoy: date = datetime.now(UTC).date()
-    pedidos_mes = await pedido_service.get_pedidos_mes(db, current_user.empresa_id)
 
+    # KPIs: una sola query para pedidos del mes (solo campos numéricos, sin items)
+    pedidos_mes = await pedido_service.get_pedidos_mes(db, current_user.empresa_id)
     total_ventas, cantidad_pedidos = pedido_service.calcular_kpis_mes(pedidos_mes)
-    top_productos = pedido_service.calcular_top_productos(pedidos_mes)
+
+    # Top 5 productos: una sola query SQL con GROUP BY (sin cargar todos los pedidos)
+    top_productos = await pedido_repo.get_top_productos_mes(db, current_user.empresa_id, limit=5)
+
+    # Conteos por estado (en memoria, ya tenemos los pedidos)
+    pendientes = sum(1 for p in pedidos_mes if p.estado == "pendiente")
+    entregados = sum(1 for p in pedidos_mes if p.estado == "entregado")
 
     # Stock bajo
     stock_bajo_count = await producto_repo.count_stock_bajo(db, current_user.empresa_id)
@@ -48,8 +55,8 @@ async def dashboard(
             "total_ventas": total_ventas,
             "cantidad_pedidos": cantidad_pedidos,
             "top_productos": top_productos,
-            "pendientes": sum(1 for p in pedidos_mes if p.estado == "pendiente"),
-            "entregados": sum(1 for p in pedidos_mes if p.estado == "entregado"),
+            "pendientes": pendientes,
+            "entregados": entregados,
             "mes_actual": hoy.strftime("%B %Y"),
             "stock_bajo_count": stock_bajo_count,
             "top_deudores": top_deudores,

@@ -1,14 +1,29 @@
 from datetime import date
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.models import Pedido
+from app.models import Pedido, PedidoItem, Producto
 
 
 async def get_by_id(db: AsyncSession, pedido_id: int, empresa_id: int) -> Pedido | None:
     result = await db.execute(
         select(Pedido).where(Pedido.id == pedido_id, Pedido.empresa_id == empresa_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_by_id_with_items(
+    db: AsyncSession, pedido_id: int, empresa_id: int
+) -> Pedido | None:
+    """Obtiene un pedido con items y productos precargados (evita N+1)."""
+    result = await db.execute(
+        select(Pedido)
+        .where(Pedido.id == pedido_id, Pedido.empresa_id == empresa_id)
+        .options(
+            selectinload(Pedido.items).selectinload(PedidoItem.producto),
+        )
     )
     return result.scalar_one_or_none()
 
@@ -118,11 +133,51 @@ async def get_asignados_by_repartidor(
 
 
 async def list_all_for_export(db: AsyncSession, empresa_id: int) -> list[Pedido]:
-    """Obtiene todos los pedidos de una empresa para exportación CSV."""
+    """Obtiene todos los pedidos de una empresa para exportación CSV.
+
+    Usa selectinload para traer items y repartidor en 1 query cada uno,
+    evitando N+1 lazy loading por cada pedido.
+    """
     query = (
         select(Pedido)
         .where(Pedido.empresa_id == empresa_id)
+        .options(
+            selectinload(Pedido.items),
+            selectinload(Pedido.repartidor),
+        )
         .order_by(Pedido.numero_pedido.desc())
     )
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+async def get_top_productos_mes(
+    db: AsyncSession, empresa_id: int, limit: int = 5
+) -> list[tuple[str, float]]:
+    """Top N productos más vendidos del mes. Una sola query SQL con GROUP BY.
+
+    Retorna lista de (descripcion, total_vendido) ordenada de mayor a menor.
+    Filtra pedidos cancelados.
+    """
+    from datetime import UTC, datetime
+
+    hoy = datetime.now(UTC).date()
+    primer_dia_mes = hoy.replace(day=1)
+
+    query = (
+        select(
+            PedidoItem.descripcion,
+            func.sum(PedidoItem.cantidad).label("total_vendido"),
+        )
+        .join(Pedido, PedidoItem.pedido_id == Pedido.id)
+        .where(
+            Pedido.empresa_id == empresa_id,
+            Pedido.fecha_creacion >= primer_dia_mes,
+            Pedido.estado != "cancelado",
+        )
+        .group_by(PedidoItem.descripcion)
+        .order_by(func.sum(PedidoItem.cantidad).desc())
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    return [(row.descripcion, float(row.total_vendido)) for row in result.all()]
