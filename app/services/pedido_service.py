@@ -1,3 +1,5 @@
+import logging
+
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
@@ -7,6 +9,8 @@ from app.models import Pedido, PedidoItem
 from app.repositories import pedido_repo, producto_repo, entrega_repo, cliente_repo
 from app.repositories.producto_repo import InsufficientStockError
 from app.services.producto_service import find_or_create_producto
+
+logger = logging.getLogger(__name__)
 
 # Estados válidos del pedido (flujo de entrega)
 VALID_ESTADOS = {"pendiente", "asignado", "en_camino", "entregado", "no_entregado", "cancelado"}
