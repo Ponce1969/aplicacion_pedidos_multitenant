@@ -6,7 +6,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.136-009688?style=flat&logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-24.0-2496ED?style=flat&logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/Tests-327%20Passed%20%2B%205%20Skipped-00A000?style=flat&logo=pytest&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-330%20Passed%20%2B%205%20Skipped-00A000?style=flat&logo=pytest&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 
 ---
@@ -104,7 +104,8 @@ pendiente ──→ asignado ──→ en_camino ──→ entregado ✔
 
 - **Roles**: `owner`, `admin`, `vendedor`, `repartidor` — cada rol ve y hace lo que le corresponde
 - **Vista Fleteros** (`/mis-entregas`): Mobile-first con tarjetas, `tel:` para llamar, Google Maps, botones Entregado/No Entregado con HTMX
-- **Vista Admin** (`/entregas`): Filtro por fecha, badges de estado dinámicos, tel: y Maps links
+- **Vista Admin** (`/entregas`): Filtro por fecha, badges de estado dinámicos, tel: y Maps links, botones Entregado/No Entregado para entrega directa
+- **Gestión de Fleteros** (Admin tab): CRUD completo, activar/desactivar, reset password, CI y vehículo opcionales
 - **Auditoría**: Cada transición genera un `EntregaEvento` con estado anterior, nuevo, usuario, nota y timestamp
 - **Notificación dual**: Al confirmar entrega se envía email al cliente (si tiene) Y a la empresa
 - **Reintentos**: `no_entregado → pendiente` permite reprogramar entregas fallidas
@@ -129,17 +130,24 @@ CTE SQL que une catálogo e historial de pedidos:
 ### 👥 Módulo Admin Completo
 Tab UI con:
 - **Usuarios**: CRUD completo (crear, editar, desactivar, reset password) con roles `owner/admin/vendedor/repartidor`
+- **Fleteros**: CRUD completo (crear, editar, activar/desactivar, reset password) — CI y vehículo opcionales, email auto-generado, asignación de entregas
 - **Productos**: Alta, edición, desactivación, búsqueda, CSV export, auto-promote JIT
 - **Empresa**: Datos, logo, color, RUT, dirección, contacto
 
 ### 🧾 Numeración Secuencial por Tenant
 `numero_pedido` secuencial por `empresa_id` (no global). Backfill con `ROW_NUMBER()`. UniqueConstraint `(empresa_id, numero_pedido)`.
 
-### 🔐 Validación de RUT Uruguayo
-Algoritmo DGI con pesos izquierda→derecha `[4,3,2,9,8,7,6,5,4,3,2]`. Normalización a 12 dígitos.
+### 🔐 Validación de RUT Uruguayo (solo Empresas)
+Algoritmo DGI con pesos izquierda→derecha `[4,3,2,9,8,7,6,5,4,3,2]`. Normalización a 12 dígitos. Aplica **solo al RUT de empresa** — el campo CI de fleteros es libre y opcional (el Admin decide qué cargar).
 
 ### 💡 CQRS para Queries de Lectura
 Servicios de query nativos (`app/services/queries/`) con SQL directo via `sqlalchemy.text()`, separados de la lógica de escritura. DTOs en `app/schemas/queries/`.
+
+### 🚀 Optimizaciones N+1
+- `selectinload()` en queries que iteran relaciones (`Pedido.items`, `Pedido.repartidor`)
+- SQL GROUP BY para agregaciones (`get_top_productos_mes`) en lugar de loops Python
+- Bulk UPDATE en `cancelar_pedido` con `UPDATE ... SET ... WHERE id IN (...)`
+- Auditoría automatizada: `Script/audit_performance.py` detecta N+1 en el código
 
 ---
 
@@ -212,7 +220,7 @@ uv run uvicorn app.main:app --reload
 uv run pytest tests/ -v
 ```
 
-**327 tests passed, 5 skipped** (producto search CTE uses PostgreSQL-specific syntax, skipped on SQLite).
+**330 tests passed, 5 skipped** (producto search CTE uses PostgreSQL-specific syntax, skipped on SQLite).
 
 ---
 
@@ -226,7 +234,7 @@ barraca_pedidos/
 │   │       ├── auth.py          # Login, logout, refresh, post-login redirect por rol
 │   │       ├── pedidos.py       # CRUD pedidos, entrega state machine, búsqueda
 │   │       ├── dashboard.py     # KPIs, stock bajo
-│   │       ├── admin.py         # Tab UI: usuarios, productos, empresa
+│   │       ├── admin.py         # Tab UI: usuarios, fleteros, productos, empresa
 │   │       ├── configuracion.py # Config visual empresa
 │   │       └── onboarding.py   # Registro público (atomic TX)
 │   ├── repositories/            # 🔷 Ports (acceso a datos)
@@ -264,7 +272,14 @@ barraca_pedidos/
 │   │   ├── admin/              # Tab UI
 │   │   └── partials/            # HTMX partials
 │   └── main.py                  # FastAPI app
-├── tests/                      # 332 test cases (327 passing, 5 skipped)
+├── tests/                      # 330 test cases (330 passing, 5 skipped)
+├── Script/                     # Auditoría automatizada
+│   ├── audit_integrity.py      # Rutas dup, imports, HTMX whitespace, hx-vals
+│   ├── audit_performance.py    # Detector de N+1 queries
+│   ├── audit_tenant_isolation.py # Verificación de filtros empresa_id
+│   ├── audit_async_leaks.py    # Async sin await, métodos síncronos en async
+│   ├── audit_strict_typing.py  # Tipos Any, funciones sin tipo de retorno
+│   └── clean_unused_partials.py # Partials HTML no referenciados
 ├── alembic/                    # DB migrations (13 migrations)
 │   └── versions/
 ├── docker-compose.yml
