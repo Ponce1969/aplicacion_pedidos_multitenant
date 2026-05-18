@@ -98,14 +98,14 @@ async def cambiar_estado_pedido(
     request: Request,
     nuevo_estado: str = Form(...),
     nota: str = Form(""),
-    refresh: str = Form(""),
+    source: str = Form(""),
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
     """Cambia el estado de un pedido (entregado, no_entregado, en_camino, etc.) con validación.
 
-    Si se envía refresh='true', se retorna HX-Refresh para forzar full page reload.
-    Si no, se retorna el partial HTML (entrega_resultado.html o HX-Trigger).
+    Si source='pedidos', retorna el partial pedido_card.html para HTMX swap in-place.
+    Si no, retorna el partial entrega_resultado.html (para /entregas y /mis-entregas).
     """
     try:
         pedido = await pedido_service.cambiar_estado_entrega(
@@ -124,12 +124,13 @@ async def cambiar_estado_pedido(
         current_user.id,
     )
 
-    # Si viene refresh, HTMX hace un full page refresh (ej. desde /pedidos)
-    if refresh:
-        return HTMLResponse(
-            content="",
-            status_code=status.HTTP_200_OK,
-            headers={"HX-Refresh": "true"},
+    # Si viene de /pedidos, retornar el card actualizado para swap in-place
+    if source == "pedidos":
+        await db.refresh(pedido)
+        return templates.TemplateResponse(
+            request,
+            "partials/pedido_card.html",
+            {"pedido": pedido},
         )
 
     if nuevo_estado == "entregado":
