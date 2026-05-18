@@ -1,10 +1,10 @@
 <div>
-    <div class="flex justify-between items-center mb-4">
+    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
         <h3 class="text-lg font-semibold text-gray-800">Catálogo de Productos</h3>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
             <a href="/admin/pedidos/exportar-csv"
                class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
-                📥 Exportar Pedidos CSV
+                📥 Exportar CSV
             </a>
             <button onclick="htmx.ajax('GET', '/admin/productos/nuevo', '#producto-form-area')"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
@@ -26,68 +26,116 @@
     <!-- Form area for create/edit -->
     <div id="producto-form-area"></div>
 
-    <!-- Products table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Precio</th>
-                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Unidad</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Stock</th>
-                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                {% for p in productos %}
-                <tr class="{% if not p.is_active %}bg-gray-50 opacity-60{% endif %} hover:bg-blue-50 transition-colors">
-                    <td class="px-4 py-3 text-sm">
-                        {{ p.nombre }}
-                        {% if p.es_automatico %}
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 ml-1" title="Producto creado automáticamente al armar un pedido — editá sus datos para completarlo">AUTO</span>
-                        {% endif %}
-                        {% if p.descripcion %}<span class="text-xs text-gray-400 ml-1">{{ p.descripcion[:40] }}{% if p.descripcion|length > 40 %}...{% endif %}</span>{% endif %}
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ p.sku or '—' }}</td>
-                    <td class="px-4 py-3 text-sm text-right font-medium">{{ p.precio_base|pesos }}</td>
-                    <td class="px-4 py-3 text-sm text-center">{{ p.unidad_medida }}</td>
-                    <td class="px-4 py-3 text-sm text-right
-                        {% if p.stock is not none and p.stock < 0 %}text-red-600 font-bold
-                        {% elif p.stock is not none and p.stock_minimo is not none and p.stock <= p.stock_minimo %}text-yellow-600 font-semibold
-                        {% elif p.stock is none %}text-gray-400
-                        {% else %}text-gray-800{% endif %}">
-                        {% if p.stock is none %}—{% else %}{{ p.stock }}{% endif %}
-                        {% if p.stock is not none and p.stock < 0 %} ⚠{% endif %}
-                    </td>
-                    <td class="px-4 py-3 text-center">
+    <!-- Products: cards on mobile, table on desktop -->
+    <!-- Mobile cards (visible < md) -->
+    <div class="md:hidden space-y-3">
+        {% for p in productos %}
+        <div class="bg-white rounded-lg shadow p-4 {% if not p.is_active %}opacity-60{% endif %}">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <span class="font-medium text-sm">{{ p.nombre }}</span>
+                    {% if p.es_automatico %}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 ml-1" title="Producto creado automáticamente — editá sus datos para completarlo">AUTO</span>
+                    {% endif %}
+                    {% if not p.is_active %}
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-800 ml-1">Inactivo</span>
+                    {% endif %}
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="htmx.ajax('GET', '/admin/productos/{{ p.id }}/editar', '#producto-form-area')"
+                            class="text-blue-500 hover:text-blue-700 text-sm" title="Editar">✏️</button>
+                    <form hx-post="/admin/productos/{{ p.id }}/toggle" hx-target="#tab-content" hx-swap="innerHTML"
+                          style="display:inline">
                         {% if p.is_active %}
-                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Activo</span>
+                        <button type="submit" class="text-red-500 hover:text-red-700 text-sm" title="Desactivar">🚫</button>
                         {% else %}
-                        <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Inactivo</span>
+                        <button type="submit" class="text-green-500 hover:text-green-700 text-sm" title="Reactivar">✅</button>
                         {% endif %}
-                    </td>
-                    <td class="px-4 py-3 text-right">
-                        <div class="flex gap-1 justify-end">
-                            <button onclick="htmx.ajax('GET', '/admin/productos/{{ p.id }}/editar', '#producto-form-area')"
-                                    class="text-blue-500 hover:text-blue-700 text-sm" title="Editar">✏️</button>
-                            <form hx-post="/admin/productos/{{ p.id }}/toggle" hx-target="#tab-content" hx-swap="innerHTML"
-                                  style="display:inline">
-                                {% if p.is_active %}
-                                <button type="submit" class="text-red-500 hover:text-red-700 text-sm" title="Desactivar">🚫</button>
-                                {% else %}
-                                <button type="submit" class="text-green-500 hover:text-green-700 text-sm" title="Reactivar">✅</button>
-                                {% endif %}
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </form>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-600">
+                {% if p.sku %}<div>SKU: <span class="text-gray-800">{{ p.sku }}</span></div>{% endif %}
+                <div>Precio: <span class="font-medium text-gray-800">{{ p.precio_base|pesos }}</span></div>
+                <div>Unidad: <span class="text-gray-800">{{ p.unidad_medida }}</span></div>
+                <div>Stock:
+                    {% if p.stock is none %}<span class="text-gray-400">—</span>
+                    {% elif p.stock < 0 %}<span class="text-red-600 font-bold">{{ p.stock }} ⚠</span>
+                    {% elif p.stock_minimo is not none and p.stock <= p.stock_minimo %}<span class="text-yellow-600 font-semibold">{{ p.stock }}</span>
+                    {% else %}<span class="text-gray-800">{{ p.stock }}</span>{% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
         {% if not productos %}
         <div class="p-4 text-center text-gray-500">No hay productos{% if q %} que coincidan con "{{ q }}"{% endif %}</div>
         {% endif %}
+    </div>
+
+    <!-- Desktop table (visible >= md) -->
+    <div class="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Precio</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Unidad</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Stock</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for p in productos %}
+                    <tr class="{% if not p.is_active %}bg-gray-50 opacity-60{% endif %} hover:bg-blue-50 transition-colors">
+                        <td class="px-4 py-3 text-sm">
+                            {{ p.nombre }}
+                            {% if p.es_automatico %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 ml-1" title="Producto creado automáticamente al armar un pedido — editá sus datos para completarlo">AUTO</span>
+                            {% endif %}
+                            {% if p.descripcion %}<span class="text-xs text-gray-400 ml-1">{{ p.descripcion[:40] }}{% if p.descripcion|length > 40 %}...{% endif %}</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ p.sku or '—' }}</td>
+                        <td class="px-4 py-3 text-sm text-right font-medium">{{ p.precio_base|pesos }}</td>
+                        <td class="px-4 py-3 text-sm text-center">{{ p.unidad_medida }}</td>
+                        <td class="px-4 py-3 text-sm text-right
+                            {% if p.stock is not none and p.stock < 0 %}text-red-600 font-bold
+                            {% elif p.stock is not none and p.stock_minimo is not none and p.stock <= p.stock_minimo %}text-yellow-600 font-semibold
+                            {% elif p.stock is none %}text-gray-400
+                            {% else %}text-gray-800{% endif %}">
+                            {% if p.stock is none %}—{% else %}{{ p.stock }}{% endif %}
+                            {% if p.stock is not none and p.stock < 0 %} ⚠{% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            {% if p.is_active %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Activo</span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <div class="flex gap-1 justify-end">
+                                <button onclick="htmx.ajax('GET', '/admin/productos/{{ p.id }}/editar', '#producto-form-area')"
+                                        class="text-blue-500 hover:text-blue-700 text-sm" title="Editar">✏️</button>
+                                <form hx-post="/admin/productos/{{ p.id }}/toggle" hx-target="#tab-content" hx-swap="innerHTML"
+                                      style="display:inline">
+                                    {% if p.is_active %}
+                                    <button type="submit" class="text-red-500 hover:text-red-700 text-sm" title="Desactivar">🚫</button>
+                                    {% else %}
+                                    <button type="submit" class="text-green-500 hover:text-green-700 text-sm" title="Reactivar">✅</button>
+                                    {% endif %}
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if not productos %}
+            <div class="p-4 text-center text-gray-500">No hay productos{% if q %} que coincidan con "{{ q }}"{% endif %}</div>
+            {% endif %}
+        </div>
     </div>
 </div>
