@@ -1,4 +1,3 @@
-{# Partial: pedido card para la vista /pedidos. Se usa para HTMX swap in-place. #}
 <div id="pedido-{{ pedido.id }}" class="bg-white border rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
     <div class="flex justify-between items-start">
         <div class="flex-1">
@@ -51,11 +50,11 @@
                 <form hx-post="/api/pedido/{{ pedido.id }}/cambiar-estado"
                       hx-target="#pedido-{{ pedido.id }}"
                       hx-swap="outerHTML"
+                      hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como entregado?"
                       class="inline">
                     <input type="hidden" name="nuevo_estado" value="entregado">
                     <input type="hidden" name="source" value="pedidos">
                     <button type="submit"
-                            hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como entregado?"
                             class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded transition-colors font-medium">
                         ✅ Entregado
                     </button>
@@ -64,13 +63,13 @@
                 <form hx-post="/api/pedido/{{ pedido.id }}/cambiar-estado"
                       hx-target="#pedido-{{ pedido.id }}"
                       hx-swap="outerHTML"
+                      hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como no entregado?"
                       class="inline">
                     <input type="hidden" name="nuevo_estado" value="no_entregado">
                     <input type="hidden" name="source" value="pedidos">
                     <button type="submit"
-                            hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como no entregado?"
                             class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded transition-colors font-medium">
-                    ❌ No Entregado
+                        ❌ No Entregado
                     </button>
                 </form>
                 {% endif %}
