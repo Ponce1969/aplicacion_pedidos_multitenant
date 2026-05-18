@@ -7,7 +7,7 @@ verificando si el repartidor tiene pedidos activos en estado
 
 from dataclasses import dataclass
 
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Pedido, Usuario
@@ -43,7 +43,6 @@ async def get_fleteros_con_estado(db: AsyncSession, empresa_id: int) -> list[Fle
             Pedido.empresa_id == empresa_id,
             Pedido.repartidor_id.isnot(None),
             Pedido.estado.in_(["asignado", "en_camino"]),
-            Pedido.is_active == True,  # noqa: E712
         )
         .group_by(Pedido.repartidor_id)
         .subquery()
