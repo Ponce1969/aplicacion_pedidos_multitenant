@@ -918,36 +918,6 @@ async def desasignar_repartidor(
     )
 
 
-@router.post("/api/pedido/{pedido_id}/cambiar-estado")
-async def cambiar_estado_pedido(
-    pedido_id: int,
-    request: Request,
-    nuevo_estado: str = Form(...),
-    nota: str = Form(""),
-    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
-    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
-) -> HTMLResponse:
-    """Cambia el estado de un pedido con validación de transiciones."""
-    try:
-        pedido = await pedido_service.cambiar_estado_entrega(
-            db, pedido_id, nuevo_estado, current_user.id, current_user.empresa_id, nota or None
-        )
-    except InvalidEstadoTransition as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e),
-        ) from e
-
-    logger.info(
-        "Pedido #%s: estado cambiado a '%s' por usuario #%s",
-        pedido_id,
-        nuevo_estado,
-        current_user.id,
-    )
-
-    return HTMLResponse(content="", status_code=status.HTTP_200_OK, headers={"HX-Trigger": "estadoCambiado"})
-
-
 @router.get("/api/pedido/{pedido_id}/historial")
 async def historial_pedido(
     pedido_id: int,
