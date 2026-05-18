@@ -571,18 +571,11 @@ async def crear_fletero(
                  "error": f"Ya existe un fletero con celular {celular}. Contactá al administrador."},
             )
 
-    # Validar CI si se proporciona
+    # CI es opcional — el Admin puede crear un fletero sin CI.
+    # No aplicamos validación estricta de RUT uruguayo aquí porque:
+    # 1) No todos los fleteros tienen CI uruguaya
+    # 2) El Admin decide qué datos cargar
     ci_value = ci.strip() if ci.strip() else None
-    if ci_value:
-        ci_normalizado = normalizar_rut(ci_value)
-        if not validar_rut(ci_normalizado):
-            return templates.TemplateResponse(
-                request,
-                "admin/partials/fletero_form.html",
-                {"user": current_user, "fletero_edit": None,
-                 "error": f"CI/RUT inválido: {ci_value}"},
-            )
-        ci_value = ci_normalizado
 
     nuevo = Usuario(
         empresa_id=current_user.empresa_id,
@@ -645,18 +638,8 @@ async def editar_fletero_guardar(
     if fletero is None or fletero.rol != "repartidor":
         raise HTTPException(status_code=404, detail="Fletero no encontrado")
 
-    # Validar CI si se proporciona
+    # CI es opcional — el Admin puede dejarlo vacío o cargar cualquier valor
     ci_value = ci.strip() if ci.strip() else None
-    if ci_value:
-        ci_normalizado = normalizar_rut(ci_value)
-        if not validar_rut(ci_normalizado):
-            return templates.TemplateResponse(
-                request,
-                "admin/partials/fletero_form.html",
-                {"user": current_user, "fletero_edit": fletero,
-                 "error": f"CI/RUT inválido: {ci_value}"},
-            )
-        ci_value = ci_normalizado
 
     fletero.nombre = nombre.strip()
     fletero.apellido = apellido.strip()
