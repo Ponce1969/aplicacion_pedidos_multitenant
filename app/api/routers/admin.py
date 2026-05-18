@@ -160,9 +160,9 @@ async def actualizar_configuracion(
 @router.get("/admin/usuarios/nuevo", response_class=HTMLResponse)
 async def nuevo_usuario_form(
     request: Request,
-    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
 ) -> HTMLResponse:
-    """Muestra formulario para crear un nuevo usuario. Solo owner."""
+    """Muestra formulario para crear un nuevo usuario. Owner y Admin."""
     return templates.TemplateResponse(
         request,
         "admin/partials/usuario_form.html",
@@ -178,9 +178,10 @@ async def crear_usuario(
     apellido: str = Form(...),
     password: str = Form(...),
     rol: str = Form("vendedor"),
-    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> HTMLResponse:
+    """Crea un nuevo usuario. Owner y Admin."""
     """Crea un nuevo usuario. Solo owner."""
     from app.auth import get_password_hash
 
@@ -284,10 +285,10 @@ async def editar_usuario_guardar(
 async def toggle_usuario(
     user_id: int,
     request: Request,
-    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> HTMLResponse:
-    """Activa o desactiva un usuario. Solo owner."""
+    """Activa o desactiva un usuario. Owner y Admin."""
     usuario = await usuario_repo.get_by_id(db, user_id, current_user.empresa_id)
     if usuario is None:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
