@@ -13,10 +13,10 @@ VALID_ESTADOS = {"pendiente", "asignado", "en_camino", "entregado", "no_entregad
 
 # Transiciones de estado permitidas
 TRANSICIONES_ESTADO: dict[str, set[str]] = {
-    "pendiente": {"asignado", "cancelado"},
-    "asignado": {"en_camino", "pendiente", "cancelado"},
+    "pendiente": {"asignado", "en_camino", "entregado", "cancelado"},
+    "asignado": {"en_camino", "pendiente", "entregado", "cancelado"},
     "en_camino": {"entregado", "no_entregado", "cancelado"},
-    "no_entregado": {"pendiente", "cancelado"},  # Reintento
+    "no_entregado": {"pendiente", "entregado", "cancelado"},  # Reintento
     "entregado": set(),  # Estado final
     "cancelado": set(),  # Estado final
 }

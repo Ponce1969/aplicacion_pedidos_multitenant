@@ -162,14 +162,45 @@ class TestCambiarEstadoEntrega:
         )
         assert pedido.estado == "pendiente"
 
-    async def test_transicion_invalida_pendiente_a_entregado(
+    async def test_transicion_valida_pendiente_a_entregado(
         self, db_session, empresa_a, user_empresa_a, pedido_empresa_a
     ):
-        """pendiente → entregado NO es válido (debe pasar por asignado/en_camino)."""
-        with pytest.raises(InvalidEstadoTransition):
-            await pedido_service.cambiar_estado_entrega(
-                db_session, pedido_empresa_a.id, "entregado", user_empresa_a.id, empresa_a.id
-            )
+        """pendiente → entregado ES válido (el Admin puede marcar entregado directamente)."""
+        pedido = await pedido_service.cambiar_estado_entrega(
+            db_session, pedido_empresa_a.id, "entregado", user_empresa_a.id, empresa_a.id
+        )
+        assert pedido.estado == "entregado"
+
+    async def test_transicion_valida_asignado_a_entregado(
+        self, db_session, empresa_a, user_empresa_a, pedido_empresa_a
+    ):
+        """asignado → entregado ES válido (el Admin marca entregado directamente)."""
+        pedido_empresa_a.estado = "asignado"
+        await db_session.commit()
+        pedido = await pedido_service.cambiar_estado_entrega(
+            db_session, pedido_empresa_a.id, "entregado", user_empresa_a.id, empresa_a.id
+        )
+        assert pedido.estado == "entregado"
+
+    async def test_transicion_valida_pendiente_a_en_camino(
+        self, db_session, empresa_a, user_empresa_a, pedido_empresa_a
+    ):
+        """pendiente → en_camino ES válido (el Admin lo lleva él mismo)."""
+        pedido = await pedido_service.cambiar_estado_entrega(
+            db_session, pedido_empresa_a.id, "en_camino", user_empresa_a.id, empresa_a.id
+        )
+        assert pedido.estado == "en_camino"
+
+    async def test_transicion_valida_no_entregado_a_entregado(
+        self, db_session, empresa_a, user_empresa_a, pedido_empresa_a
+    ):
+        """no_entregado → entregado ES válido (reintento exitoso)."""
+        pedido_empresa_a.estado = "no_entregado"
+        await db_session.commit()
+        pedido = await pedido_service.cambiar_estado_entrega(
+            db_session, pedido_empresa_a.id, "entregado", user_empresa_a.id, empresa_a.id
+        )
+        assert pedido.estado == "entregado"
 
     async def test_transicion_invalida_entregado_a_pendiente(
         self, db_session, empresa_a, user_empresa_a, pedido_empresa_a
@@ -238,16 +269,16 @@ class TestTransicionesConstantes:
         assert VALID_ESTADOS == {"pendiente", "asignado", "en_camino", "entregado", "no_entregado", "cancelado"}
 
     def test_transiciones_pendiente(self):
-        assert TRANSICIONES_ESTADO["pendiente"] == {"asignado", "cancelado"}
+        assert TRANSICIONES_ESTADO["pendiente"] == {"asignado", "en_camino", "entregado", "cancelado"}
 
     def test_transiciones_asignado(self):
-        assert TRANSICIONES_ESTADO["asignado"] == {"en_camino", "pendiente", "cancelado"}
+        assert TRANSICIONES_ESTADO["asignado"] == {"en_camino", "pendiente", "entregado", "cancelado"}
 
     def test_transiciones_en_camino(self):
         assert TRANSICIONES_ESTADO["en_camino"] == {"entregado", "no_entregado", "cancelado"}
 
     def test_transiciones_no_entregado(self):
-        assert TRANSICIONES_ESTADO["no_entregado"] == {"pendiente", "cancelado"}
+        assert TRANSICIONES_ESTADO["no_entregado"] == {"pendiente", "entregado", "cancelado"}
 
     def test_estado_final_entregado(self):
         assert TRANSICIONES_ESTADO["entregado"] == set()

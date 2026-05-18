@@ -98,10 +98,15 @@ async def cambiar_estado_pedido(
     request: Request,
     nuevo_estado: str = Form(...),
     nota: str = Form(""),
+    redirect: str = Form(""),
     current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
     db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
 ) -> HTMLResponse:
-    """Cambia el estado de un pedido (entregado, no_entregado, en_camino, etc.) con validación."""
+    """Cambia el estado de un pedido (entregado, no_entregado, en_camino, etc.) con validación.
+
+    Si se envía redirect (ej. '/pedidos'), se retorna HX-Redirect para refrescar la lista.
+    Si no, se retorna el partial HTML (entrega_resultado.html o HX-Trigger).
+    """
     try:
         pedido = await pedido_service.cambiar_estado_entrega(
             db, pedido_id, nuevo_estado, current_user.id, current_user.empresa_id, nota or None
@@ -118,6 +123,14 @@ async def cambiar_estado_pedido(
         nuevo_estado,
         current_user.id,
     )
+
+    # Si viene redirect, HTMX redirige la página completa (ej. desde /pedidos)
+    if redirect:
+        return HTMLResponse(
+            content="",
+            status_code=status.HTTP_200_OK,
+            headers={"HX-Redirect": redirect},
+        )
 
     if nuevo_estado == "entregado":
         return templates.TemplateResponse(

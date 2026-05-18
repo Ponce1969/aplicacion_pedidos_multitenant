@@ -57,6 +57,34 @@
                 <div class="text-right ml-4 flex flex-col items-end gap-2">
                     <div class="text-xl font-bold text-green-600">{{ pedido.total|pesos }}</div>
                     <div class="text-xs text-gray-400">{{ pedido.fecha_creacion.strftime('%d/%m %H:%M') }}</div>
+                    {% if pedido.estado in ('pendiente', 'asignado', 'en_camino', 'no_entregado') %}
+                    <div class="flex gap-1 mt-1">
+                        <form hx-post="/api/pedido/{{ pedido.id }}/cambiar-estado"
+                              hx-swap="none"
+                              class="inline">
+                            <input type="hidden" name="nuevo_estado" value="entregado">
+                            <input type="hidden" name="redirect" value="/pedidos">
+                            <button type="submit"
+                                    hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como entregado?"
+                                    class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded transition-colors font-medium">
+                                ✅ Entregado
+                            </button>
+                        </form>
+                        {% if pedido.estado == 'en_camino' %}
+                        <form hx-post="/api/pedido/{{ pedido.id }}/cambiar-estado"
+                              hx-swap="none"
+                              class="inline">
+                            <input type="hidden" name="nuevo_estado" value="no_entregado">
+                            <input type="hidden" name="redirect" value="/pedidos">
+                            <button type="submit"
+                                    hx-confirm="¿Marcar pedido #{{ pedido.numero_pedido }} como no entregado?"
+                                    class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded transition-colors font-medium">
+                                ❌ No Entregado
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                     <div class="flex gap-2">
                         <a href="/pedido/{{ pedido.id }}/imprimir" target="_blank" class="text-green-500 hover:text-green-700 text-sm" title="Imprimir remito">🖨️</a>
                         <a href="/editar-pedido/{{ pedido.id }}" class="text-blue-500 hover:text-blue-700 text-sm" title="Editar pedido">✏️</a>
