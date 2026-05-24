@@ -79,7 +79,7 @@
         </div>
     </form>
 
-    {% if fletero_edit and user.rol == 'owner' %}
+    {% if fletero_edit and user.rol in ('owner', 'admin') %}
     <hr class="my-4">
     <details class="text-sm">
         <summary class="cursor-pointer text-gray-600 hover:text-gray-800">🔑 Resetear contraseña</summary>
