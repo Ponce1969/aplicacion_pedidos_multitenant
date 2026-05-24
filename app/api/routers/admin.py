@@ -540,35 +540,52 @@ async def crear_fletero(
     nombre: str = Form(...),
     apellido: str = Form(...),
     celular: str = Form(...),
+    email: str = Form(""),
     vehiculo: str = Form(""),
     ci: str = Form(""),
     password: str = Form(...),
     current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> HTMLResponse:
-    """Crea un nuevo fletero. Owner y Admin. Auto-genera el email."""
+    """Crea un nuevo fletero. Owner y Admin. Si se provee email real, se usa; si no, se auto-genera."""
     from app.auth import get_password_hash
     from app.services.queries.fletero_service import get_fleteros_con_estado
 
-    # Auto-generar email: celular@empresa-slug.com
-    config = await empresa_repo.get_by_id(db, current_user.empresa_id)
-    slug = config.slug if config else f"empresa{current_user.empresa_id}"
-    # Normalizar celular para email: sacamos espacios, guiones, etc.
-    celular_limpio = celular.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
-    email_autogenerado = f"{celular_limpio}@{slug}.fletero"
+    # Determinar email: usar el real si se proveyó, si no auto-generar
+    email_provided = email.strip().lower() if email.strip() else ""
+    if email_provided:
+        # Email real del fletero — permite recuperación de contraseña
+        login_email = email_provided
+    else:
+        # Auto-generar email interno: celular@empresa-slug.fletero
+        config = await empresa_repo.get_by_id(db, current_user.empresa_id)
+        slug = config.slug if config else f"empresa{current_user.empresa_id}"
+        celular_limpio = celular.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+        login_email = f"{celular_limpio}@{slug}.fletero"
 
     # Verificar email duplicado
-    existing = await usuario_repo.get_by_email(db, email_autogenerado, current_user.empresa_id)
+    existing = await usuario_repo.get_by_email(db, login_email, current_user.empresa_id)
     if existing:
-        # Intentar con apellido
-        email_autogenerado = f"{celular_limpio}.{apellido.strip().lower()}@{slug}.fletero"
-        existing = await usuario_repo.get_by_email(db, email_autogenerado, current_user.empresa_id)
+        if email_provided:
+            error_msg = f"Ya existe un usuario con el email {login_email}."
+        else:
+            # Intentar con apellido como fallback para auto-generado
+            config = await empresa_repo.get_by_id(db, current_user.empresa_id)
+            slug = config.slug if config else f"empresa{current_user.empresa_id}"
+            celular_limpio = celular.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+            login_email = f"{celular_limpio}.{apellido.strip().lower()}@{slug}.fletero"
+            existing = await usuario_repo.get_by_email(db, login_email, current_user.empresa_id)
+            if existing:
+                error_msg = f"Ya existe un fletero con celular {celular}. Contactá al administrador."
+            else:
+                # El fallback funcionó, continuamos
+                existing = None
         if existing:
             return templates.TemplateResponse(
                 request,
                 "admin/partials/fletero_form.html",
                 {"user": current_user, "fletero_edit": None,
-                 "error": f"Ya existe un fletero con celular {celular}. Contactá al administrador."},
+                 "error": error_msg},
             )
 
     # CI es opcional — el Admin puede crear un fletero sin CI.
@@ -579,7 +596,7 @@ async def crear_fletero(
 
     nuevo = Usuario(
         empresa_id=current_user.empresa_id,
-        email=email_autogenerado,
+        email=login_email,
         nombre=nombre.strip(),
         apellido=apellido.strip(),
         password_hash=get_password_hash(password),
@@ -591,7 +608,7 @@ async def crear_fletero(
         ci=ci_value,
     )
     await usuario_repo.create(db, nuevo)
-    logger.info("Fletero '%s %s' creado por owner #%s (email=%s)", nombre, apellido, current_user.id, email_autogenerado)
+    logger.info("Fletero '%s %s' creado por owner #%s (email=%s)", nombre, apellido, current_user.id, login_email)
 
     fleteros = await get_fleteros_con_estado(db, current_user.empresa_id)
     return templates.TemplateResponse(
@@ -626,17 +643,32 @@ async def editar_fletero_guardar(
     nombre: str = Form(...),
     apellido: str = Form(...),
     celular: str = Form(...),
+    email: str = Form(""),
     vehiculo: str = Form(""),
     ci: str = Form(""),
     current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> HTMLResponse:
-    """Guarda cambios en un fletero."""
+    """Guarda cambios en un fletero. Permite cambiar el email para recuperación de contraseña."""
     from app.services.queries.fletero_service import get_fleteros_con_estado
 
     fletero = await usuario_repo.get_by_id(db, fletero_id, current_user.empresa_id)
     if fletero is None or fletero.rol != "repartidor":
         raise HTTPException(status_code=404, detail="Fletero no encontrado")
+
+    # Actualizar email si se proporcionó uno nuevo (y es diferente al actual)
+    email_provided = email.strip().lower() if email.strip() else ""
+    if email_provided and email_provided != fletero.email:
+        # Verificar que no exista otro usuario con ese email en la empresa
+        existing = await usuario_repo.get_by_email(db, email_provided, current_user.empresa_id)
+        if existing and existing.id != fletero_id:
+            return templates.TemplateResponse(
+                request,
+                "admin/partials/fletero_form.html",
+                {"user": current_user, "fletero_edit": fletero,
+                 "error": f"Ya existe otro usuario con el email {email_provided}."},
+            )
+        fletero.email = email_provided
 
     # CI es opcional — el Admin puede dejarlo vacío o cargar cualquier valor
     ci_value = ci.strip() if ci.strip() else None

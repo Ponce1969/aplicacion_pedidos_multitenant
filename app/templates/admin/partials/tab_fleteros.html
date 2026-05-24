@@ -48,6 +48,7 @@
                 {% endif %}
             </div>
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-600">
+                <div>Email: <span class="text-gray-800 text-xs">{{ f.email }}</span></div>
                 <div>Tel:
                     {% if f.celular %}
                     <a href="tel:{{ f.celular }}" class="text-blue-600 hover:underline">{{ f.celular }}</a>
@@ -75,6 +76,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teléfono</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehículo</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
@@ -87,6 +89,9 @@
                     <tr class="{% if not f.is_active %}bg-gray-50 opacity-60{% endif %} hover:bg-blue-50 transition-colors">
                         <td class="px-4 py-3 text-sm font-medium">
                             {{ f.nombre }} {{ f.apellido }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">
+                            <span class="text-xs">{{ f.email }}</span>
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-600">
                             {% if f.celular %}
