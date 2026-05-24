@@ -1,15 +1,13 @@
 """Servicio de envío de emails multi-tenant.
 
 Incluye:
-- Password reset (legacy SMTP)
+- Password reset (Resend API)
 - Notificaciones de pedido (Resend API)
 """
 
 from __future__ import annotations
 
 import logging
-import smtplib
-from email.mime.text import MIMEText
 
 import httpx
 from fastapi import BackgroundTasks
@@ -25,13 +23,11 @@ logger = logging.getLogger(__name__)
 TEMPLATES_DIR = Path(__file__).parent / "templates" / "email"
 
 
-def send_password_reset_email(recipient_email: str, token: str, user_name: str) -> bool:
-    """Envía email con link de reseteo de contraseña.
-
-    Retorna True si se envió correctamente, False si falló.
-    Si SMTP no está configurado, loguea el link y retorna True (modo dev).
-    """
-    reset_url = f"{settings.BASE_URL}/reset-password?token={token}"
+def _send_password_reset_via_resend(recipient_email: str, reset_url: str, user_name: str) -> bool:
+    """Envía email de reseteo de contraseña via Resend API."""
+    if not settings.RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY no configurada — no se puede enviar email de reseteo")
+        return False
 
     html_body = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -57,27 +53,58 @@ def send_password_reset_email(recipient_email: str, token: str, user_name: str) 
     </div>
     """
 
-    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        logger.warning("SMTP no configurado — link de reseteo: %s", reset_url)
-        return True  # Modo desarrollo: no envía email pero funciona
+    # Parsear FROM_EMAIL: soporta "Nombre <email@dominio>" o solo "email@dominio"
+    from_email = settings.RESEND_FROM_EMAIL
+    if "<" in from_email and ">" in from_email:
+        # Ya tiene formato "Nombre <email>" — usar como está
+        sender = from_email
+    else:
+        # Solo el email — usar como está
+        sender = from_email
 
     try:
-        msg = MIMEText(html_body, "html")
-        msg["Subject"] = "Recuperación de Contraseña"
-        msg["From"] = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
-        msg["To"] = recipient_email
-
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            if settings.SMTP_USE_TLS:
-                server.starttls()
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.send_message(msg)
+        with httpx.Client(timeout=10.0) as client:
+            response = client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}"},
+                json={
+                    "from": sender,
+                    "to": [recipient_email],
+                    "subject": "Recuperación de Contraseña",
+                    "html": html_body,
+                },
+            )
+            if response.status_code == 200:
+                logger.info("Email de reseteo enviado a %s via Resend", recipient_email)
+                return True
+            else:
+                logger.error("Resend error %s: %s", response.status_code, response.text)
+                return False
     except Exception:
-        logger.exception("Error enviando email de reseteo a %s", recipient_email)
+        logger.exception("Error enviando email de reseteo a %s via Resend", recipient_email)
         return False
-    else:
-        logger.info("Email de reseteo enviado a %s", recipient_email)
-        return True
+
+
+def send_password_reset_email(recipient_email: str, token: str, user_name: str) -> bool:
+    """Envía email con link de reseteo de contraseña.
+
+    Usa Resend API si hay API key configurada.
+    Si no, loguea el link y retorna True (modo desarrollo).
+    """
+    reset_url = f"{settings.BASE_URL}/reset-password?token={token}"
+
+    # Intentar con Resend primero
+    if settings.RESEND_API_KEY:
+        success = _send_password_reset_via_resend(recipient_email, reset_url, user_name)
+        if success:
+            return True
+        # Si Resend falló, loguear y continuar
+
+    if not settings.RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY no configurada — link de reseteo: %s", reset_url)
+        return True  # Modo desarrollo: no envía email pero funciona
+
+    return False
 
 
 class EmailService:

@@ -36,7 +36,12 @@ pwd_context = CryptContext(
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica contraseña usando Argon2."""
-    return bool(pwd_context.verify(plain_password, hashed_password))
+    try:
+        return bool(pwd_context.verify(plain_password, hashed_password))
+    except Exception:
+        # Hash corrupto o formato desconocido — fallar safe
+        logger.exception("Error verifying password hash (may be corrupted)")
+        return False
 
 
 def get_password_hash(password: str) -> str:
