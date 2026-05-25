@@ -114,7 +114,7 @@ async def login(
 
     response = HTMLResponse(content="", status_code=status.HTTP_200_OK)
     response.headers["HX-Redirect"] = redirect_url
-    auth_service.build_auth_cookies(response, user.id, user.empresa_id)
+    auth_service.build_auth_cookies(response, user.id, user.empresa_id, user.rol)
     return response
 
 
