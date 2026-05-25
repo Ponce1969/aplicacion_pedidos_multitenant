@@ -17,9 +17,9 @@ from app.config import settings
 from app.database import get_db, init_db
 from app.dependencies import AuthRequiredException, require_auth
 from app.models import TokenBlacklist, Usuario
+from app.middlewares import AuthMiddleware
 from app.rate_limiter import RateLimitMiddleware
 from app.security_headers import SecurityHeadersMiddleware
-from app.csrf import CSRFMiddleware
 from app.csrf import CSRFMiddleware
 
 logging.basicConfig(
@@ -130,6 +130,9 @@ async def auth_required_handler(request: Request, exc: AuthRequiredException) ->
 
 # Middleware de rate limiting (primero, antes de auth)
 app.add_middleware(RateLimitMiddleware)
+
+# Auth + restricción de roles (repartidor solo ve /mis-entregas)
+app.add_middleware(AuthMiddleware)
 
 # CSRF protection (solo en producción)
 if settings.APP_ENV == "production":
