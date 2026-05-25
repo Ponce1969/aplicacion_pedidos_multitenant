@@ -315,4 +315,4 @@ async def refresh_access_token(
         )
 
     # Crear nuevo access token
-    return create_access_token(data={"sub": str(user.id), "empresa_id": user.empresa_id})
+    return create_access_token(data={"sub": str(user.id), "empresa_id": user.empresa_id, "role": user.rol})

@@ -58,9 +58,9 @@ async def authenticate_user(
     return user
 
 
-def build_auth_cookies(response: object, user_id: int, empresa_id: int) -> None:
+def build_auth_cookies(response: object, user_id: int, empresa_id: int, role: str) -> None:
     """Agrega cookies de access_token y refresh_token a la response."""
-    access_token = create_access_token(data={"sub": str(user_id), "empresa_id": empresa_id})
+    access_token = create_access_token(data={"sub": str(user_id), "empresa_id": empresa_id, "role": role})
     refresh_token = create_refresh_token(data={"sub": str(user_id), "empresa_id": empresa_id})
 
     # En desarrollo (localhost sin HTTPS), secure=False para que las cookies funcionen
