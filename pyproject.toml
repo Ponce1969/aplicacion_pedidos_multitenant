@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "fastapi>=0.115.0",
+    "starlette>=1.0.1",  # CVE-2026-48710 BadHost: auth bypass via Host header
     "uvicorn[standard]>=0.32.0",
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
