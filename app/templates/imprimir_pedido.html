@@ -44,6 +44,8 @@
 
         .section {
             margin-bottom: 20px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .section-title {
@@ -162,6 +164,8 @@
             padding: 10px;
             border: 1px dashed #000;
             min-height: 40px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         /* ===== PRINT STYLES ===== */
@@ -194,6 +198,20 @@
             .items-table td {
                 padding: 4px;
             }
+
+            /* Hide URL links — SECURITY: never expose internal URLs in print */
+            a[href]::after {
+                content: none !important;
+            }
+
+            a[href] {
+                color: inherit !important;
+                text-decoration: none !important;
+            }
+
+            .actions {
+                display: none !important;
+            }
         }
 
         /* Acciones en pantalla */
@@ -222,19 +240,13 @@
             color: white;
             text-decoration: none;
         }
-
-        @media print {
-            .actions {
-                display: none;
-            }
-        }
     </style>
 </head>
 <body>
     <!-- Acciones (no se imprimen) -->
     <div class="actions no-print">
         <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
-        <a class="btn-download" href="/pedido/{{ pedido.id }}/descargar" target="_blank">📄 Descargar</a>
+        <button class="btn-download" onclick="window.location.href='/pedido/{{ pedido.id }}/descargar';">📄 Descargar</button>
     </div>
 
     <div class="header">
