@@ -204,6 +204,10 @@ async def registrar_pago_htmx(
     total_senias = sum(float(p.senia or 0) for p in pedidos)
     total_saldo = total_pedidos - total_senias
 
+    # OOB: datos frescos de deudores para actualizar la tabla
+    top_deudores = await cliente_repo.get_top_deudores(db, current_user.empresa_id, limit=5)
+    total_deuda = sum(float(c.saldo_pendiente or 0) for c in top_deudores)
+
     return templates.TemplateResponse(
         request,
         "partials/cuenta_corriente_detalle.html",
@@ -217,5 +221,7 @@ async def registrar_pago_htmx(
             "total_pedidos": total_pedidos,
             "total_senias": total_senias,
             "total_saldo": total_saldo,
+            "top_deudores": top_deudores,
+            "total_deuda": total_deuda,
         },
     )

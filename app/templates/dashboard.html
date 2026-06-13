@@ -81,7 +81,7 @@
             <h3 class="text-xl font-bold text-gray-900">💰 Cuenta Corriente</h3>
             <div class="text-right">
                 <span class="text-sm text-gray-500">Deuda total:</span>
-                <span class="text-2xl font-bold {% if total_deuda > 0 %}text-red-600{% else %}text-green-600{% endif %} ml-2">
+                <span id="total-deuda-value" class="text-2xl font-bold {% if total_deuda > 0 %}text-red-600{% else %}text-green-600{% endif %} ml-2">
                     ${{ "%.0f"|format(total_deuda) }}
                 </span>
             </div>
@@ -98,7 +98,7 @@
                         <th class="px-3 py-2 text-right font-semibold">Límite</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="deudores-tbody">
                     {% for c in top_deudores %}
                     <tr class="border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors"
                         hx-get="/api/clientes/{{ c.id }}/cuenta-corriente"
