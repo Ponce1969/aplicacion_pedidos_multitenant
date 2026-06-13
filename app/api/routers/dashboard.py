@@ -204,11 +204,7 @@ async def registrar_pago_htmx(
     total_senias = sum(float(p.senia or 0) for p in pedidos)
     total_saldo = total_pedidos - total_senias
 
-    # OOB: datos frescos de deudores para actualizar la tabla
-    top_deudores = await cliente_repo.get_top_deudores(db, current_user.empresa_id, limit=5)
-    total_deuda = sum(float(c.saldo_pendiente or 0) for c in top_deudores)
-
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "partials/cuenta_corriente_detalle.html",
         {
@@ -221,6 +217,31 @@ async def registrar_pago_htmx(
             "total_pedidos": total_pedidos,
             "total_senias": total_senias,
             "total_saldo": total_saldo,
+        },
+    )
+    # Trigger HTMX event to refresh deudores table and total deuda
+    response.headers["HX-Trigger"] = "pagoRegistrado"
+    return response
+
+
+@router.get("/api/dashboard/deudores", response_class=HTMLResponse)
+async def deudores_partial(
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),  # noqa: B008 — FastAPI pattern
+    db: AsyncSession = Depends(get_db),  # noqa: B008 — FastAPI pattern
+) -> HTMLResponse:
+    """Devuelve partial con tabla de deudores y total de deuda actualizados.
+
+    Se llama via HTMX trigger cuando se registra un pago.
+    """
+    top_deudores = await cliente_repo.get_top_deudores(db, current_user.empresa_id, limit=5)
+    total_deuda = sum(float(c.saldo_pendiente or 0) for c in top_deudores)
+
+    return templates.TemplateResponse(
+        request,
+        "partials/deudores_table.html",
+        {
+            "user": current_user,
             "top_deudores": top_deudores,
             "total_deuda": total_deuda,
         },

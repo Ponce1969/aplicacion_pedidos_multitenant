@@ -166,33 +166,4 @@
         </div>
     </div>
     {% endif %}
-
-    {% if top_deudores %}
-    <!-- OOB: actualizar tabla de deudores y total de deuda después de un pago -->
-    <tbody id="deudores-tbody" hx-swap-oob="innerHTML">
-        {% for c in top_deudores %}
-        <tr class="border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors"
-            hx-get="/api/clientes/{{ c.id }}/cuenta-corriente"
-            hx-target="#cc-panel"
-            hx-swap="innerHTML">
-            <td class="px-3 py-2 font-medium text-blue-600 hover:text-blue-800 hover:underline">{{ c.nombre }} {{ c.apellido }}</td>
-            <td class="px-3 py-2 text-gray-500">{{ c.celular }}</td>
-            <td class="px-3 py-2 text-right font-bold {% if c.saldo_pendiente and c.saldo_pendiente > 0 %}text-red-600{% else %}text-green-600{% endif %}">
-                ${{ "%.0f"|format(c.saldo_pendiente or 0) }}
-            </td>
-            <td class="px-3 py-2 text-right text-gray-500">
-                {% if c.limite_credito %}
-                    ${{ "%.0f"|format(c.limite_credito) }}
-                {% else %}
-                    sin límite
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-    <span id="total-deuda-value" hx-swap-oob="innerHTML"
-          class="text-2xl font-bold {% if total_deuda > 0 %}text-red-600{% else %}text-green-600{% endif %} ml-2">
-        ${{ "%.0f"|format(total_deuda) }}
-    </span>
-    {% endif %}
 </div>
