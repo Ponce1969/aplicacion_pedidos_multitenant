@@ -100,6 +100,12 @@ button, a {
 
 /* ===== PRINT STYLES ===== */
 @media print {
+    /* SECURITY: Try to suppress browser headers/footers that show URLs.
+       Most modern browsers support this. */
+    @page {
+        margin: 10mm;
+    }
+
     /* SECURITY: Hide navigation, footer, and interactive elements.
        Never expose internal URLs / navigation in printed documents. */
     nav,

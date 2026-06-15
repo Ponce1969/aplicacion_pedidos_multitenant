@@ -7,6 +7,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-24.0-2496ED?style=flat&logo=docker&logoColor=white)
 ![Tests](https://img.shields.io/badge/Tests-330%20Passed%20%2B%205%20Skipped-00A000?style=flat&logo=pytest&logoColor=white)
+![Security](https://img.shields.io/badge/Security-Audit%20Gate%20%E2%9C%94-Critical-green?style=flat)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 
 ---
@@ -89,7 +90,12 @@ Cada empresa tiene su propio color primario, logo y datos de contacto. El CSS se
 - Total vendido del mes
 - Cantidad de pedidos
 - Top 5 productos más vendidos
-- Últimos 10 pedidos
+- **💰 Cuenta Corriente interactiva**: clickeá un deudor y se abre un panel con:
+  - Lista de pedidos con total, seña y saldo pendiente
+  - Historial de pagos registrados
+  - Formulario para registrar pagos (efectivo, transferencia, tarjeta)
+  - El saldo se actualiza en tiempo real via HTMX — sin recargar la página
+  - Si un cliente queda en $0, desaparece automáticamente de la tabla de deudores
 
 ### 🚚 Gestión de Entregas (Con State Machine)
 Flujo completo de entregas con máquina de estados estricta:

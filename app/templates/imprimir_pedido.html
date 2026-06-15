@@ -2,7 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Pedido #{{ pedido.numero_pedido }} — Imprimir</title>
+    <title>Remito</title>
+    <!-- SECURITY: Meta tag prevents search engines from indexing internal pages -->
+    <meta name="robots" content="noindex, nofollow">
     <style>
         * {
             margin: 0;
@@ -170,6 +172,13 @@
 
         /* ===== PRINT STYLES ===== */
         @media print {
+            /* SECURITY: Remove browser headers/footers that show the page URL.
+               This is a best-effort CSS hint. Users should also uncheck
+               "Headers and footers" in the browser print dialog. */
+            @page {
+                margin: 10mm;
+            }
+
             body {
                 padding: 0;
                 font-size: 11px;
@@ -199,7 +208,7 @@
                 padding: 4px;
             }
 
-            /* Hide URL links — SECURITY: never expose internal URLs in print */
+            /* SECURITY: Never expose internal URLs in print */
             a[href]::after {
                 content: none !important;
             }
@@ -247,6 +256,7 @@
     <div class="actions no-print">
         <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
         <button class="btn-download" onclick="window.location.href='/pedido/{{ pedido.id }}/descargar';">📄 Descargar</button>
+        <p class="text-xs text-gray-500 mt-2">💡 Al imprimir, desmarcá <strong>"Encabezados y pies de página"</strong> en el diálogo de impresión para ocultar la URL.</p>
     </div>
 
     <div class="header">
@@ -400,6 +410,17 @@
                 window.print();
             };
         }
+
+        // SECURITY: Before printing, replace the title with a generic one
+        // to avoid exposing the internal URL in the browser's print header.
+        // Most browsers show the <title> in the print header/footer.
+        // Remind users to uncheck "Headers and footers" in print dialog.
+        window.addEventListener('beforeprint', function() {
+            document.title = 'Remito';
+        });
+        window.addEventListener('afterprint', function() {
+            document.title = 'Remito';
+        });
     </script>
 </body>
 </html>
