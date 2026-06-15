@@ -33,15 +33,15 @@ services:
       - "8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@db:5432/${POSTGRES_DB:-barraca}
-      APP_ENV: production
-      DEBUG: "false"
+      APP_ENV: ${APP_ENV:-production}
+      DEBUG: ${DEBUG:-false}
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY no definido en .env}
       SWAGGER_PASSWORD: ${SWAGGER_PASSWORD:-}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-20}
       DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-10}
-      BASE_URL: https://pedidos-generales.loquinto.com
+      BASE_URL: ${BASE_URL:?BASE_URL no definido en .env}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
     depends_on:
