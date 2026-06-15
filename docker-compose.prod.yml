@@ -1,7 +1,7 @@
 # docker-compose.prod.yml — Producción con Cloudflare Tunnel
 # USO: docker compose -f docker-compose.prod.yml up -d
 # Cloudflare Tunnel maneja HTTPS, no necesita certificados locales
-# Tunnel apunta a: http://orange-pi-ip:8010
+# Tunnel apunta a: http://orange-pi-ip:${NGINX_PORT:-8010}
 #
 # ⚠️ OBLIGATORIO: Crear .env con los valores reales antes de levantar.
 #    cp .env.example .env && editar con valores de produccion.
@@ -17,12 +17,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5445:5432"
+      - "${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?} -d ${POSTGRES_DB:-barraca}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: ${HEALTHCHECK_INTERVAL:-10s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
     networks:
       - barraca_network
     restart: unless-stopped
@@ -30,39 +30,46 @@ services:
   app:
     build: .
     expose:
-      - "8000"
+      - "${APP_INTERNAL_PORT:-8000}"
     environment:
+      # Database
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@db:5432/${POSTGRES_DB:-barraca}
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-20}
+      DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-10}
+
+      # Core settings
       APP_ENV: ${APP_ENV:-production}
       DEBUG: ${DEBUG:-false}
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY no definido en .env}
+      BASE_URL: ${BASE_URL:?BASE_URL no definido en .env}
+
+      # Security
       SWAGGER_PASSWORD: ${SWAGGER_PASSWORD:-}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
-      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-20}
-      DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-10}
-      BASE_URL: ${BASE_URL:?BASE_URL no definido en .env}
+
+      # External services
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${APP_INTERNAL_PORT:-8000}/health')\" || exit 1"]
+      interval: ${HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-10s}
+      retries: ${HEALTHCHECK_RETRIES:-3}
+      start_period: ${HEALTHCHECK_START_PERIOD:-15s}
     networks:
       - barraca_network
     restart: unless-stopped
 
   nginx:
-    image: nginx:alpine
+    image: ${NGINX_IMAGE:-nginx:alpine}
     ports:
-      - "8010:80"
+      - "${NGINX_PORT:-8010}:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${NGINX_CONFIG:-./nginx.conf}:/etc/nginx/nginx.conf:ro
     depends_on:
       app:
         condition: service_healthy

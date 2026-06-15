@@ -1,6 +1,6 @@
 # docker-compose.yml — Desarrollo (sin HTTPS)
 # ⚠️ Solo para desarrollo local. Para produccion usar docker-compose.prod.yml
-# Los defaults son INSEGUROS — en produccion TODOS los secrets vienen del .env
+# Los defaults son para desarrollo — en produccion TODOS los secrets vienen del .env
 services:
   db:
     image: postgres:16-alpine
@@ -12,37 +12,44 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barraca_user} -d ${POSTGRES_DB:-barraca}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: ${HEALTHCHECK_INTERVAL:-10s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
     networks:
       - barraca_network
 
   app:
     build: .
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8000}:${APP_INTERNAL_PORT:-8000}"
     environment:
+      # Database
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-barraca_user}:${POSTGRES_PASSWORD:?}@db:5432/${POSTGRES_DB:-barraca}
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-20}
+      DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-10}
+
+      # Core settings
       APP_ENV: ${APP_ENV:-development}
       DEBUG: ${DEBUG:-true}
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY requerido en .env}
+      BASE_URL: ${BASE_URL:-http://localhost:8000}
+
+      # Security
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
-      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-20}
-      DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-10}
-      BASE_URL: ${BASE_URL:-http://localhost:8000}
+
+      # External services
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${APP_INTERNAL_PORT:-8000}/health')\" || exit 1"]
+      interval: ${HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-10s}
+      retries: ${HEALTHCHECK_RETRIES:-3}
+      start_period: ${HEALTHCHECK_START_PERIOD:-15s}
     networks:
       - barraca_network
 
