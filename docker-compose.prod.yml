@@ -2,20 +2,24 @@
 # USO: docker compose -f docker-compose.prod.yml up -d
 # Cloudflare Tunnel maneja HTTPS, no necesita certificados locales
 # Tunnel apunta a: http://orange-pi-ip:8010
+#
+# ⚠️ OBLIGATORIO: Crear .env con los valores reales antes de levantar.
+#    cp .env.example .env && editar con valores de produccion.
+#    SIN .env, los contenedores FALLARAN (no hay defaults para secrets).
 
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-barraca_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-barraca_prod_2024}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER no definido en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD no definido en .env}
       POSTGRES_DB: ${POSTGRES_DB:-barraca}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5445:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-barraca_user} -d ${POSTGRES_DB:-barraca}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?} -d ${POSTGRES_DB:-barraca}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,22 +32,18 @@ services:
     expose:
       - "8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-barraca_user}:${POSTGRES_PASSWORD:-barraca_prod_2024}@db:5432/${POSTGRES_DB:-barraca}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@db:5432/${POSTGRES_DB:-barraca}
       APP_ENV: production
       DEBUG: "false"
-      SECRET_KEY: ${SECRET_KEY}
-      SWAGGER_PASSWORD: ${SWAGGER_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY no definido en .env}
+      SWAGGER_PASSWORD: ${SWAGGER_PASSWORD:-}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-20}
       DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-10}
       BASE_URL: https://pedidos-generales.loquinto.com
-      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
-      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
     depends_on:
       db:
         condition: service_healthy
