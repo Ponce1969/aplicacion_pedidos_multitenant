@@ -172,11 +172,9 @@
 
         /* ===== PRINT STYLES ===== */
         @media print {
-            /* SECURITY: Remove browser headers/footers that show the page URL.
-               This is a best-effort CSS hint. Users should also uncheck
-               "Headers and footers" in the browser print dialog. */
+            /* Minimize page margins to push browser headers/footers out */
             @page {
-                margin: 10mm;
+                margin: 5mm;
             }
 
             body {
@@ -221,9 +219,28 @@
             .actions {
                 display: none !important;
             }
+
+            .print-hint {
+                display: none !important;
+            }
         }
 
-        /* Acciones en pantalla */
+        /* ===== SCREEN STYLES ===== */
+        .print-hint {
+            margin: 15px 0;
+            padding: 12px 16px;
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #92400e;
+            line-height: 1.5;
+        }
+
+        .print-hint strong {
+            color: #78350f;
+        }
+
         .actions {
             margin: 20px 0;
             text-align: center;
@@ -254,9 +271,12 @@
 <body>
     <!-- Acciones (no se imprimen) -->
     <div class="actions no-print">
-        <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
-        <button class="btn-download" onclick="window.location.href='/pedido/{{ pedido.id }}/descargar';">📄 Descargar</button>
-        <p class="text-xs text-gray-500 mt-2">💡 Al imprimir, desmarcá <strong>"Encabezados y pies de página"</strong> en el diálogo de impresión para ocultar la URL.</p>
+        <button class="btn-print" onclick="window.print()">Imprimir</button>
+        <button class="btn-download" onclick="window.location.href='/pedido/{{ pedido.id }}/descargar';">Descargar</button>
+    </div>
+
+    <div class="print-hint no-print">
+        <strong>Para imprimir sin URL ni encabezado:</strong> En el dialogo de impresion, desmarcá <strong>"Encabezados y pies de pagina"</strong> (Headers and footers). Los links no se van a ver como tales al imprimir.
     </div>
 
     <div class="header">
@@ -411,15 +431,16 @@
             };
         }
 
-        // SECURITY: Before printing, replace the title with a generic one
-        // to avoid exposing the internal URL in the browser's print header.
-        // Most browsers show the <title> in the print header/footer.
-        // Remind users to uncheck "Headers and footers" in print dialog.
+        // SECURITY: Replace title before printing to avoid exposing the URL
+        // in the browser's print header/footer. Most browsers show <title>.
+        // CSS alone CANNOT suppress browser headers — user must uncheck
+        // "Headers and footers" in the print dialog. The hint above reminds them.
+        let originalTitle = document.title;
         window.addEventListener('beforeprint', function() {
             document.title = 'Remito';
         });
         window.addEventListener('afterprint', function() {
-            document.title = 'Remito';
+            document.title = originalTitle || 'Remito';
         });
     </script>
 </body>
