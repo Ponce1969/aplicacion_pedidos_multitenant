@@ -50,6 +50,11 @@
             page-break-inside: avoid;
         }
 
+        .section.allow-break {
+            break-inside: auto;
+            page-break-inside: auto;
+        }
+
         .section-title {
             font-weight: bold;
             font-size: 14px;
@@ -191,14 +196,27 @@
             }
 
             .firma-section {
-                position: fixed;
-                bottom: 50px;
-                left: 20px;
-                right: 20px;
+                position: relative;
+                bottom: auto;
+                left: auto;
+                right: auto;
+                margin-top: 50px;
+                break-inside: avoid;
+                page-break-inside: avoid;
             }
 
             .items-table {
                 font-size: 10px;
+                page-break-inside: auto;
+            }
+
+            .items-table thead {
+                display: table-header-group;
+            }
+
+            .items-table tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
             }
 
             .items-table th,
@@ -325,7 +343,7 @@
     </div>
 
     <!-- Detalle del Pedido -->
-    <div class="section">
+    <div class="section allow-break">
         <div class="section-title">📝 DETALLE DEL PEDIDO</div>
         {% if pedido.items %}
         <table class="items-table">
