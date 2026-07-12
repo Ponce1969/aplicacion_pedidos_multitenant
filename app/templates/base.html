@@ -28,8 +28,11 @@
         })();
 
         // Auto-refresh token cada 50 minutos
+        // credentials: 'include' is required so the browser sends the refresh_token cookie
         setInterval(() => {
-            fetch('/api/refresh-token', { method: 'POST' });
+            fetch('/api/refresh-token', { method: 'POST', credentials: 'include' })
+                .then(r => { if (!r.ok) window.location.href = '/login'; })
+                .catch(() => {});
         }, 50 * 60 * 1000);
 
         // Indicador de carga HTMX
@@ -38,6 +41,13 @@
         });
         document.body.addEventListener('htmx:afterRequest', () => {
             document.getElementById('loading').classList.add('hidden');
+        });
+
+        // Redirect to login on 401 — token expired or missing
+        document.body.addEventListener('htmx:responseError', (event) => {
+            if (event.detail.xhr.status === 401) {
+                window.location.href = '/login';
+            }
         });
 
         // CSRF: enviar token en cada request HTMX

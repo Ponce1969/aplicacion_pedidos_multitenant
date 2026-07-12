@@ -3,7 +3,8 @@ import logging
 import secrets
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, status
+from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -11,16 +12,16 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Routers
-from app.api.routers import admin, auth, clientes, dashboard, pedidos, onboarding, configuracion
+from app.api.routers import admin, auth, clientes, configuracion, dashboard, onboarding, pedidos
 from app.auth import get_current_admin_user, get_password_hash
 from app.config import settings
+from app.csrf import CSRFMiddleware
 from app.database import get_db, init_db
 from app.dependencies import AuthRequiredException, require_auth
-from app.models import TokenBlacklist, Usuario
 from app.middlewares import AuthMiddleware
+from app.models import TokenBlacklist, Usuario
 from app.rate_limiter import RateLimitMiddleware
 from app.security_headers import SecurityHeadersMiddleware
-from app.csrf import CSRFMiddleware
 
 logging.basicConfig(
     level=logging.INFO if settings.DEBUG else logging.WARNING,
@@ -127,6 +128,23 @@ async def auth_required_handler(request: Request, exc: AuthRequiredException) ->
         response.headers["HX-Redirect"] = "/login"
         return response
     return RedirectResponse(url="/login", status_code=302)
+
+
+@app.exception_handler(HTTPException)
+async def http_401_handler(request: Request, exc: HTTPException) -> RedirectResponse | JSONResponse:
+    """Handler para 401: redirige al login en requests HTMX.
+
+    El middleware solo verifica que el token exista pero no lo valida.
+    Cuando el token existe pero expiró, get_current_user lanza 401.
+    Sin este handler, HTMX mostraría JSON crudo en el DOM.
+    """
+    if exc.status_code == status.HTTP_401_UNAUTHORIZED and request.headers.get("HX-Request") == "true":
+        response = RedirectResponse(url="/login", status_code=302)
+        response.headers["HX-Redirect"] = "/login"
+        return response
+    # Para el resto de casos, comportamiento por defecto
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 
 # Middleware de rate limiting (primero, antes de auth)
 app.add_middleware(RateLimitMiddleware)
