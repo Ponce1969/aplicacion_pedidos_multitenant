@@ -204,3 +204,22 @@ async def cleanup_blacklist(
     deleted = result.rowcount
     logger.info("Cleaned up %d expired tokens from blacklist", deleted)
     return JSONResponse({"deleted": deleted})
+
+
+# DEBUG TEMPORAL — eliminar después de diagnosticar el bug de cookies
+@app.get("/api/debug/cookies")
+async def debug_cookies(request: Request) -> JSONResponse:
+    """Muestra cookies presentes. SOLO PARA DEBUG — eliminar en prod."""
+    return JSONResponse({
+        "cookies": list(request.cookies.keys()),
+        "has_access_token": "access_token" in request.cookies,
+        "has_refresh_token": "refresh_token" in request.cookies,
+        "has_csrf": "csrf_token" in request.cookies,
+        "method": request.method,
+        "path": request.url.path,
+        "headers": {
+            "x-csrf-token": request.headers.get("X-CSRF-Token", ""),
+            "hx-request": request.headers.get("HX-Request", ""),
+            "origin": request.headers.get("origin", ""),
+        },
+    })

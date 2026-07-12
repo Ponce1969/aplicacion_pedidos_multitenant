@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import TypedDict
 
@@ -10,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models import TokenBlacklist, Usuario
+
+logger = logging.getLogger(__name__)
 
 
 class TokenPayload(TypedDict):
@@ -115,6 +118,16 @@ async def get_current_user(
     """
     # Buscar token en cookie primero (HTMX), luego en header
     token: str | None = request.cookies.get("access_token")
+
+    # DEBUG TEMPORAL — registrar cookies presentes en cada request
+    logger.warning(
+        "[AUTH DEBUG] method=%s path=%s has_token=%s cookie_keys=%s",
+        request.method,
+        request.url.path,
+        bool(token),
+        list(request.cookies.keys()),
+    )
+
     if not token:
         credentials_header = request.headers.get("Authorization")
         if credentials_header and credentials_header.startswith("Bearer "):
