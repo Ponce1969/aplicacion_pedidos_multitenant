@@ -20,7 +20,6 @@ class AuthRequiredException(Exception):
 
 PUBLIC_PATHS: set[str] = {
     "/login",
-    "/registro",
     "/static",
     "/health",
     "/forgot-password",
@@ -29,7 +28,6 @@ PUBLIC_PATHS: set[str] = {
 
 PUBLIC_PREFIXES: set[str] = {
     "/api/login",
-    "/api/registro",
     "/api/logout",
     "/api/refresh-token",
     "/api/forgot-password",

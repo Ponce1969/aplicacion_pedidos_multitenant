@@ -20,7 +20,6 @@ class AuthMiddleware:
 
     PUBLIC_PATHS: ClassVar[set[str]] = {
         "/login",
-        "/registro",
         "/static",
         "/health",
         "/forgot-password",
@@ -29,7 +28,6 @@ class AuthMiddleware:
 
     PUBLIC_PREFIXES: ClassVar[set[str]] = {
         "/api/login",
-        "/api/registro",
         "/api/logout",
         "/api/refresh-token",
         "/api/forgot-password",

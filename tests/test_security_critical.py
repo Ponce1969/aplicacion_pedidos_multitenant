@@ -171,9 +171,15 @@ class TestAdminAuthorization:
         )
         
         response = await client.get("/registro")
-        
+
         # Admin puede acceder
         assert response.status_code == 200
+
+    async def test_registro_page_anon_redirige_login(self, client):
+        """GET /registro sin auth debe redirigir a /login (no 401 engañoso)."""
+        response = await client.get("/registro", follow_redirects=False)
+        assert response.status_code in [302, 303]
+        assert "/login" in response.headers.get("location", "")
 
     async def test_api_registro_requiere_admin(self, client, db_session, empresa_a):
         """POST /api/registro sin admin debe redirigir o 403."""
