@@ -19,13 +19,15 @@ class SecurityHeadersMiddleware:
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
-            "img-src 'self' data:; "
-            "font-src 'self'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' https:; "
             "connect-src 'self'; "
-            "frame-ancestors 'none';"
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self';"
         ),
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Referrer-Policy": "no-referrer",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         "X-XSS-Protection": "0",
         "Cache-Control": "no-store, no-cache, must-revalidate",
