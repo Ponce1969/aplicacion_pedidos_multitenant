@@ -335,6 +335,14 @@ docker compose -f docker-compose.prod.yml exec app alembic upgrade head
 
 > **Importante**: `up -d` solo NO rebuild. Usá siempre `build --no-cache app` antes del `up -d`.
 
+> ⚠️ **Cambios en `nginx.conf` tras `git pull`: recrear el contenedor, no solo `reload`.**
+> `nginx.conf` se monta como **bind mount** (`./nginx.conf:/etc/nginx/nginx.conf`). `git pull` **reemplaza** el archivo en disco (nuevo inode), y el contenedor de nginx en ejecución sigue viendo el contenido del inode anterior. Por eso `nginx -s reload` **no** aplica los cambios y los headers (CSP/HSTS, etc.) pueden quedar duplicados o desactualizados.
+> Después de un `git pull` que toque `nginx.conf`, forzá la recreación del contenedor:
+> ```bash
+> docker compose -f docker-compose.prod.yml up -d --force-recreate nginx
+> ```
+> (Un `reload` solo alcanza si editaste el archivo **in-place** sin reemplazarlo; tras `git pull` siempre recreá.)
+
 El backend queda detrás de Cloudflare Tunnel en el puerto 8010 (nginx). HTTPS y cache son manejados por Cloudflare.
 
 ---
