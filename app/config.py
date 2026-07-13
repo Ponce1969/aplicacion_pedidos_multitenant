@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -52,6 +52,16 @@ class Settings(BaseSettings):
 
     # Swagger protection
     SWAGGER_PASSWORD: str = Field(default="", alias="SWAGGER_PASSWORD")
+
+    @model_validator(mode="after")
+    def _check_prod_secrets(self) -> "Settings":
+        # Defense-in-depth: nunca firmar JWT con la clave de desarrollo en prod.
+        if self.APP_ENV == "production" and self.SECRET_KEY == "dev-secret-key-min-32-chars-change!":
+            raise ValueError(
+                "SECRET_KEY sigue siendo el default de desarrollo. "
+                "Genera uno fuerte en el .env de produccion: openssl rand -hex 32"
+            )
+        return self
 
     model_config = {
         "env_file": ".env",
