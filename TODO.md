@@ -3,8 +3,8 @@
 Anotado para la próxima sesión. Ver también la sección **Deploy en Producción** en el README.
 
 ## 🔴 Sesión siguiente (prioridad alta)
-- [ ] **Verificar / rotar `SECRET_KEY` en producción**: el app arranca Healthy, así que ya NO es el default de dev (lo garantiza el guard en `app/config.py`). Confirmar que el valor en `.env` del server es fuerte; si no, generar con `openssl rand -hex 32` y recrear el contenedor `app`.
-- [x] **Self-hostear htmx** en `/static/` y eliminar `unpkg.com` del CSP (`app/security_headers.py`). ✅ Hecho en esta sesión.
+- [x] **Verificar / rotar `SECRET_KEY` en producción**: rotado con `openssl rand -hex 32` y recreado el contenedor `app`. ✅
+- [x] **Self-hostear htmx** en `/static/` y eliminar `unpkg.com` del CSP. ✅ Hecho y deployado. Descubrimos y fixeamos que nginx no montaba `app/static` (agregado en `docker-compose.prod.yml`).
 - [ ] **Self-hostear Tailwind** (build profesional) y eliminar `cdn.tailwindcss.com` del CSP. → Diferido a sesión futura.
 
 ## 🟡 Media
