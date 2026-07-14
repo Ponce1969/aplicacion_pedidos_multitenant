@@ -39,7 +39,7 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Rol *</label>
                 <select name="rol"
-                        {% if user.rol != 'owner' %}disabled{% endif %}
+                        {% if user.rol != 'owner' or (usuario_edit and usuario_edit.id == user.id) %}disabled{% endif %}
                         class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     {% for r in valid_roles %}
                     <option value="{{ r }}" {% if usuario_edit and usuario_edit.rol == r %}selected{% elif not usuario_edit and r == 'vendedor' %}selected{% endif %}>
@@ -47,9 +47,9 @@
                     </option>
                     {% endfor %}
                 </select>
-                {% if user.rol != 'owner' %}
+                {% if user.rol != 'owner' or (usuario_edit and usuario_edit.id == user.id) %}
                 <input type="hidden" name="rol" value="{{ usuario_edit.rol if usuario_edit else 'vendedor' }}">
-                <p class="text-xs text-gray-500 mt-1">Solo el owner puede cambiar roles.</p>
+                <p class="text-xs text-gray-500 mt-1">Solo el owner puede cambiar roles (y no el propio).</p>
                 {% endif %}
             </div>
             {% if not usuario_edit %}

@@ -59,10 +59,11 @@
                         {{ u.ultimo_login.strftime('%d/%m/%Y %H:%M') if u.ultimo_login else 'Nunca' }}
                     </td>
                     <td class="px-4 py-3 text-right">
-                        {% if u.id != user.id and user.rol == 'owner' %}
+                        {% if user.rol == 'owner' %}
                         <div class="flex gap-1 justify-end">
                             <button onclick="htmx.ajax('GET', '/admin/usuarios/{{ u.id }}/editar', '#usuario-form-area')"
                                     class="text-blue-500 hover:text-blue-700 text-sm" title="Editar">✏️</button>
+                            {% if u.id != user.id %}
                             <form hx-post="/admin/usuarios/{{ u.id }}/toggle" hx-target="#tab-content" hx-swap="innerHTML"
                                   style="display:inline">
                                 {% if u.is_active %}
@@ -71,8 +72,9 @@
                                 <button type="submit" class="text-green-500 hover:text-green-700 text-sm" title="Reactivar">✅</button>
                                 {% endif %}
                             </form>
+                            {% endif %}
                         </div>
-                        {% elif u.id != user.id and user.rol == 'admin' %}
+                        {% elif user.rol == 'admin' %}
                         <button onclick="htmx.ajax('GET', '/admin/usuarios/{{ u.id }}/editar', '#usuario-form-area')"
                                 class="text-blue-500 hover:text-blue-700 text-sm" title="Editar">✏️</button>
                         {% endif %}

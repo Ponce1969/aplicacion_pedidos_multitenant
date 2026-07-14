@@ -260,8 +260,8 @@ async def editar_usuario_guardar(
     if usuario is None:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # Solo owner puede cambiar roles
-    if current_user.rol == ROLE_OWNER and rol in VALID_ROLES:
+    # Solo owner puede cambiar roles, y nunca el propio (evita auto-lockout)
+    if current_user.rol == ROLE_OWNER and rol in VALID_ROLES and usuario.id != current_user.id:
         usuario.rol = rol
         usuario.is_admin = (rol in (ROLE_OWNER, ROLE_ADMIN))
 
