@@ -12,7 +12,7 @@
             </p>
         </div>
         
-        <form class="mt-8 space-y-6" hx-post="/api/login" hx-target="#resultado" hx-swap="innerHTML">
+        <form class="mt-8 space-y-6" method="POST" action="/api/login" hx-post="/api/login" hx-target="#resultado" hx-swap="innerHTML">
             <div class="rounded-md shadow-sm -space-y-px">
                 <div>
                     <label for="email" class="sr-only">Email</label>
