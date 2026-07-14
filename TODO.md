@@ -4,7 +4,8 @@ Anotado para la próxima sesión. Ver también la sección **Deploy en Producci�
 
 ## 🔴 Sesión siguiente (prioridad alta)
 - [ ] **Verificar / rotar `SECRET_KEY` en producción**: el app arranca Healthy, así que ya NO es el default de dev (lo garantiza el guard en `app/config.py`). Confirmar que el valor en `.env` del server es fuerte; si no, generar con `openssl rand -hex 32` y recrear el contenedor `app`.
-- [ ] **Self-hostear htmx + Tailwind** en `/static/` y eliminar `unpkg.com` / `cdn.tailwindcss.com` / `cdn.jsdelivr.net` del CSP (`app/security_headers.py`). Reduce superficie de ataque y elimina dependencia de CDN.
+- [x] **Self-hostear htmx** en `/static/` y eliminar `unpkg.com` del CSP (`app/security_headers.py`). ✅ Hecho en esta sesión.
+- [ ] **Self-hostear Tailwind** (build profesional) y eliminar `cdn.tailwindcss.com` del CSP. → Diferido a sesión futura.
 
 ## 🟡 Media
 - [ ] Extender rate-limit a `/api/forgot-password` y `/api/reset-password` (hoy solo `/api/login` y `/api/registro` en `nginx.conf`).
