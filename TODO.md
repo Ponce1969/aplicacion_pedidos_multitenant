@@ -5,7 +5,7 @@ Anotado para la próxima sesión. Ver también la sección **Deploy en Producci�
 ## 🔴 Sesión siguiente (prioridad alta)
 - [x] **Verificar / rotar `SECRET_KEY` en producción**: rotado con `openssl rand -hex 32` y recreado el contenedor `app`. ✅
 - [x] **Self-hostear htmx** en `/static/` y eliminar `unpkg.com` del CSP. ✅ Hecho y deployado. Descubrimos y fixeamos que nginx no montaba `app/static` (agregado en `docker-compose.prod.yml`).
-- [ ] **Self-hostear Tailwind** (build profesional) y eliminar `cdn.tailwindcss.com` del CSP. → Diferido a sesión futura.
+- [x] **Self-hostear Tailwind** (build profesional) y eliminar `cdn.tailwindcss.com` del CSP. ✅ Hecho: standalone CLI en Dockerfile, output en `app/static/css/tailwind.css`.
 
 ## 🟡 Media
 - [ ] Extender rate-limit a `/api/forgot-password` y `/api/reset-password` (hoy solo `/api/login` y `/api/registro` en `nginx.conf`).
