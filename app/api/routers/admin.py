@@ -317,19 +317,53 @@ async def reset_password(
     user_id: int,
     request: Request,
     new_password: str = Form(...),
-    current_user: Usuario = Depends(require_role(ROLE_OWNER)),  # noqa: B008
+    confirm_password: str = Form(""),
+    current_user: Usuario = Depends(require_role(ROLE_OWNER, ROLE_ADMIN)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> HTMLResponse:
-    """Resetea la contraseña de un usuario. Solo owner."""
-    from app.auth import get_password_hash
+    """Resetea la contraseña de un usuario. Owner y admin pueden usarlo; admin no puede resetear owner."""
+    from app.auth import get_password_hash, validate_password_strength
 
     usuario = await usuario_repo.get_by_id(db, user_id, current_user.empresa_id)
     if usuario is None:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
+    # Un admin no puede resetear la contraseña de un owner
+    if current_user.rol != ROLE_OWNER and usuario.rol == ROLE_OWNER:
+        return templates.TemplateResponse(
+            request,
+            "admin/partials/error.html",
+            {"error": "No tenés permisos para resetear la contraseña de un owner"},
+        )
+
+    if new_password != confirm_password:
+        return templates.TemplateResponse(
+            request,
+            "admin/partials/usuario_form.html",
+            {
+                "usuario_edit": usuario,
+                "user": current_user,
+                "valid_roles": VALID_ROLES,
+                "error": "Las contraseñas no coinciden",
+            },
+        )
+
+    error_msg = validate_password_strength(new_password)
+    if error_msg:
+        return templates.TemplateResponse(
+            request,
+            "admin/partials/usuario_form.html",
+            {
+                "usuario_edit": usuario,
+                "user": current_user,
+                "valid_roles": VALID_ROLES,
+                "error": error_msg,
+            },
+        )
+
     usuario.password_hash = get_password_hash(new_password)
     await db.commit()
-    logger.info("Password reset for user #%s by owner #%s", user_id, current_user.id)
+    logger.info("Password reset for user #%s by %s #%s", user_id, current_user.rol, current_user.id)
 
     usuarios = await usuario_repo.list_all(db, current_user.empresa_id)
     return templates.TemplateResponse(

@@ -53,6 +53,17 @@ def get_password_hash(password: str) -> str:
     return hashed
 
 
+def validate_password_strength(password: str) -> str | None:
+    """Valida fuerza de contraseña. Devuelve mensaje de error o None si es válida."""
+    if len(password) < 8:
+        return "La contraseña debe tener al menos 8 caracteres"
+    if not any(c.isupper() for c in password):
+        return "La contraseña debe tener al menos una mayúscula"
+    if not any(c.isdigit() for c in password):
+        return "La contraseña debe tener al menos un número"
+    return None
+
+
 def create_access_token(
     data: dict[str, str],
     expires_delta: timedelta | None = None,
