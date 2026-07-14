@@ -315,7 +315,7 @@ barraca_pedidos/
 | `APP_ENV` | `development` | `development` o `production` |
 | `DEBUG` | `false` | Logs detallados |
 | `POSTGRES_USER` | `barraca_user` | Usuario PostgreSQL |
-| `POSTGRES_PASSWORD` | `barraca_dev_2024` | Contraseña DB |
+| `POSTGRES_PASSWORD` | `<CAMBIAR>` | Contraseña DB |
 | `POSTGRES_DB` | `barraca` | Nombre de la base de datos |
 | `RESEND_API_KEY` | *(opcional)* | API key para envío de emails (Resend) |
 | `SWAGGER_PASSWORD` | *(opcional)* | Password para acceder a `/docs` en producción |

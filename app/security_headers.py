@@ -17,8 +17,8 @@ class SecurityHeadersMiddleware:
         "X-Frame-Options": "DENY",
         "Content-Security-Policy": (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
+            "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.tailwindcss.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
             "img-src 'self' data: https:; "
             "font-src 'self' https:; "
             "connect-src 'self'; "

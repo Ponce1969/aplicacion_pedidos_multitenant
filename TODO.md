@@ -11,9 +11,9 @@ Anotado para la próxima sesión. Ver también la sección **Deploy en Producci�
 - [ ] Estrategia de backups de PostgreSQL (volumen `postgres_data`).
 - [ ] Cadencia de auditoría: vulnerability scanner + `pip-audit` periódicamente.
 
-## 🟢 Baja (limpieza)
-- [ ] README: cambiar el ejemplo `POSTGRES_PASSWORD: barraca_dev_2024` por `<CAMBIAR>` para no tentar a nadie.
-- [ ] Quitar `cdn.jsdelivr.net` del CSP si se confirma que no se usa.
+## 🟢 Baja (limpieza) — ✅ resuelto en esta sesión
+- [x] README: cambiar el ejemplo `POSTGRES_PASSWORD: barraca_dev_2024` por `<CAMBIAR>` para no tentar a nadie.
+- [x] Quitar `cdn.jsdelivr.net` del CSP si se confirma que no se usa.
 
 ---
 
