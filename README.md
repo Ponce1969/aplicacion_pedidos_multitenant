@@ -286,6 +286,8 @@ barraca_pedidos/
 │   ├── audit_async_leaks.py    # Async sin await, métodos síncronos en async
 │   ├── audit_strict_typing.py  # Tipos Any, funciones sin tipo de retorno
 │   └── clean_unused_partials.py # Partials HTML no referenciados
+├── scripts/                    # Scripts de seguridad y utilidades
+│   └── detect_get_passwords.py # Git Hook de pre-commit para evitar tokens en GET
 ├── alembic/                    # DB migrations (13 migrations)
 │   └── versions/
 ├── docker-compose.yml
