@@ -183,6 +183,7 @@ class Pago(Base):
         Index("idx_pago_cliente", "cliente_id"),
         Index("idx_pago_empresa", "empresa_id"),
         Index("idx_pago_pedido", "pedido_id"),
+        Index("idx_pago_registrado_por", "registrado_por"),
     )
 
 
@@ -321,6 +322,7 @@ class EntregaEvento(Base):
     __table_args__ = (
         Index("idx_evento_pedido", "pedido_id"),
         Index("idx_evento_empresa", "empresa_id"),
+        Index("idx_evento_usuario", "usuario_id"),
     )
 
 
