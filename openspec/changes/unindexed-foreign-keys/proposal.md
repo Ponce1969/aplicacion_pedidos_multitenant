@@ -44,4 +44,4 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pago_registrado_por
 ### Tareas:
 - [x] Generar migración de Alembic en `alembic/versions/` (revisión `015`) aplicando los dos índices concurrentemente en PostgreSQL y con fallback para SQLite/tests.
 - [x] Asegurar que los modelos SQLAlchemy en `app/models.py` declaren explícitamente los índices en `__table_args__`.
-- [ ] Aplicar migración en staging y verificar con `uv run mcp_pg_auditor.py --cli`.
+- [x] Aplicar migración en producción/staging y verificar existencia de índices en PostgreSQL.
